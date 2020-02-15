@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 
 
@@ -23,6 +24,9 @@ public class RestHelper {
     public static final String PUT = "PUT";
     public static final String DELETE = "DELETE";
     public static final String OPTIONS = "OPTIONS";
+
+    private static final String TOKEN = "Token";
+    private static final String AUTHORIZATION = "Authorization";
 
     private static final int HTTPOK = 200;
     public static final int HTTPNODATA = 204;
@@ -83,30 +87,44 @@ public class RestHelper {
         }
     }
 
+    public interface IQeuryInterface {
+        Map<String, ParamValue> getValues();
+    }
+
+    private static class QueryInterface implements IQeuryInterface {
+
+        final Map<String, ParamValue> values = new HashMap<String, ParamValue>();
+
+        @Override
+        public Map<String, ParamValue> getValues() {
+            return values;
+        }
+    }
+
     abstract public static class RestServiceHelper implements HttpHandler {
         final String url;
         final String expectedMethod;
+        final boolean tokenexpected;
         final Map<String, RestParam> params = new HashMap<String, RestParam>();
-        int successResponse;
-        final Map<String, ParamValue> values = new HashMap<String, ParamValue>();
 
-        public abstract void servicehandle(HttpExchange httpExchange) throws IOException;
-
+        public abstract void servicehandle(HttpExchange httpExchange, IQeuryInterface v) throws IOException;
 
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
-            if (!verifyURL(httpExchange)) return;
+            Optional<IQeuryInterface> v = verifyURL(httpExchange);
+            if (!v.isPresent()) return;
             try {
-                servicehandle(httpExchange);
+                servicehandle(httpExchange, v.get());
             } catch (Exception e) {
                 RestLogger.L.log(Level.SEVERE, "Error while handling service", e);
                 throw e;
             }
         }
 
-        protected RestServiceHelper(String url, String expectedMethod) {
+        protected RestServiceHelper(String url, String expectedMethod, boolean tokenexpected) {
             this.url = url;
             this.expectedMethod = expectedMethod;
+            this.tokenexpected = tokenexpected;
         }
 
         protected void addParam(String paramName, PARAMTYPE ptype) {
@@ -123,11 +141,16 @@ public class RestHelper {
             t.getResponseHeaders().set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,Authorization");
         }
 
-        protected void produceResponse(HttpExchange t, String message, int HTTPResponse) throws IOException {
+        private void addTokenHeader(HttpExchange t, String token) {
+            t.getResponseHeaders().set(AUTHORIZATION, TOKEN + " " + token);
+        }
+
+        protected void produceResponse(HttpExchange t, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
             addCORSHeader(t);
-            if ((message == null) || message.equals("")) t.sendResponseHeaders(HTTPNODATA, 0);
+            if (token.isPresent()) addTokenHeader(t, token.get());
+            if ((!message.isPresent()) || message.get().equals("")) t.sendResponseHeaders(HTTPNODATA, 0);
             else {
-                byte[] response = message.getBytes();
+                byte[] response = message.get().getBytes();
                 t.sendResponseHeaders(HTTPResponse, response.length);
                 try (OutputStream os = t.getResponseBody()) {
                     os.write(response);
@@ -135,28 +158,67 @@ public class RestHelper {
             }
         }
 
+        protected void produceResponse(HttpExchange t, Optional<String> message, int HTTPResponse) throws IOException {
+            produceResponse(t, message, HTTPResponse, Optional.empty());
+        }
+
+        protected void produceParameterNotFound(HttpExchange t, String s) throws IOException {
+            produceResponse(t, Optional.of("Parameter " + s + " not found in url"), HTTPBADREQUEST);
+        }
+
+
+        protected void produceOKResponse(HttpExchange t, Optional<String> message, Optional<String> token) throws IOException {
+            produceResponse(t, message, HTTPOK, token);
+        }
+
+        protected void produceOKResponse(HttpExchange t, Optional<String> message) throws IOException {
+            produceOKResponse(t, message, Optional.empty());
+        }
+
         protected void produceOKResponse(HttpExchange t, String message) throws IOException {
-            produceResponse(t, message, HTTPOK);
+            if (message == null || message.equals("")) produceNODATAResponse(t);
+            else produceOKResponse(t, Optional.of(message), Optional.empty());
         }
 
         protected void produceNODATAResponse(HttpExchange t) throws IOException {
-            produceResponse(t, "", HTTPNODATA);
+            produceResponse(t, Optional.empty(), HTTPNODATA);
         }
 
         private boolean verifyMethod(HttpExchange t) throws IOException {
 
             if (OPTIONS.equals(t.getRequestMethod()) || expectedMethod.equals(t.getRequestMethod())) return true;
             String message = expectedMethod + " method expected, " + t.getRequestMethod() + " provided.";
-            produceResponse(t, message, HTTPMETHODNOTALLOWED);
+            produceResponse(t, Optional.of(message), HTTPMETHODNOTALLOWED);
             return false;
         }
 
-        protected boolean verifyURL(HttpExchange t) throws IOException {
+        protected Optional<String> getAuthorizationToken(HttpExchange t) {
+            List<String> auth = t.getRequestHeaders().get(AUTHORIZATION);
+            if (auth == null || auth.isEmpty()) return Optional.empty();
+            for (String s : auth) {
+                String[] e = s.split(" ");
+                if (e.length > 1 && e[0].equals(TOKEN)) return Optional.of(e[1]);
+            }
+            return Optional.empty();
+        }
+
+        protected Optional<String> getAuthorizationToken(HttpExchange t, boolean expected) throws IOException {
+            Optional<String> token = getAuthorizationToken(t);
+            if ((!token.isPresent() || token.get().equals("")) && expected) {
+                produceResponse(t, Optional.of("Authorization token is expected."), HTTPBADREQUEST);
+                return Optional.empty();
+            }
+            return token;
+        }
+
+
+        private Optional<IQeuryInterface> verifyURL(HttpExchange t) throws IOException {
             RestLogger.debug(t.getRequestMethod() + " " + t.getRequestURI().getQuery());
-            if (!verifyMethod(t)) return false;
+            if (!verifyMethod(t)) return Optional.empty();
+            if (tokenexpected && !getAuthorizationToken(t, tokenexpected).isPresent()) Optional.empty();
             // verify param
             // check if parameters allowed
-            values.clear();
+            QueryInterface v = new QueryInterface();
             if (t.getRequestURI().getQuery() != null) {
                 String qq = t.getRequestURI().getQuery();
                 String query = URLDecoder.decode(qq, StandardCharsets.UTF_8.toString());
@@ -166,33 +228,33 @@ public class RestHelper {
                     String s = vv[0];
                     String val = vv.length == 1 ? "" : vv[1];
                     if (!params.containsKey(s)) {
-                        produceResponse(t, "Parameter " + s + " not expected.", HTTPBADREQUEST);
-                        return false;
+                        produceResponse(t, Optional.of("Parameter " + s + " not expected."), HTTPBADREQUEST);
+                        return Optional.empty();
                     }
                     // get value
                     RestParam rpara = params.get(s);
                     switch (rpara.ptype) {
                         case BOOLEAN: {
                             if (val.equals("true") || val.equals("false")) {
-                                values.put(s, new ParamValue(val.equals("true")));
+                                v.values.put(s, new ParamValue(val.equals("true")));
                                 break;
                             }
                             // incorrect true or false
-                            produceResponse(t, "Parameter " + s + "?" + val + " true or false expected", HTTPBADREQUEST);
-                            return false;
+                            produceResponse(t, Optional.of("Parameter " + s + "?" + val + " true or false expected"), HTTPBADREQUEST);
+                            return Optional.empty();
                         }
                         case INT: {
                             try {
                                 int i = Integer.parseInt(val);
-                                values.put(s, new ParamValue(i));
+                                v.values.put(s, new ParamValue(i));
                                 break;
                             } catch (NumberFormatException e) {
-                                produceResponse(t, "Parameter " + s + "?" + val + " incorrect integer value", HTTPBADREQUEST);
-                                return false;
+                                produceResponse(t, Optional.of("Parameter " + s + "?" + val + " incorrect integer value"), HTTPBADREQUEST);
+                                Optional.empty();
                             }
                         }
                         case STRING: {
-                            values.put(s, new ParamValue(val));
+                            v.values.put(s, new ParamValue(val));
                             break;
                         }
                     }
@@ -200,35 +262,44 @@ public class RestHelper {
             }
             // verify obligatory params
             for (String s : params.keySet()) {
-                if (!values.containsKey(s)) {
+                if (!v.values.containsKey(s)) {
                     if (params.get(s).obligatory) {
-                        produceResponse(t, "Parameter " + s + " not found in url", HTTPBADREQUEST);
-                        return false;
+                        produceParameterNotFound(t, s);
+                        return Optional.empty();
                     }
                     // set default value
-                    values.put(s, params.get(s).defa);
+                    v.values.put(s, params.get(s).defa);
                 }
             }
 
             if (OPTIONS.equals(t.getRequestMethod())) {
                 RestLogger.L.info(OPTIONS + " request");
-                produceOKResponse(t, "OK");
+                produceOKResponse(t, Optional.of("OK"));
                 // return false, to avoid sending the content for OPTIONS
-                return false;
+                Optional.empty();
             }
-            return true;
+            return Optional.of(v);
         }
 
-        protected  boolean getLogParam(String param) {
-            return values.get(param).logvalue;
+        protected boolean getLogParam(IQeuryInterface v, String param) {
+            return v.getValues().get(param).logvalue;
         }
 
-        protected int getIntParam(String param) {
-            return values.get(param).intvalue;
+        protected int getIntParam(IQeuryInterface v, String param) {
+            return v.getValues().get(param).intvalue;
         }
 
-        protected String getStringParam(String param) {
-            return values.get(param).stringvalue;
+        protected String getStringParam(IQeuryInterface v, String param) {
+            return v.getValues().get(param).stringvalue;
+        }
+
+        protected Optional<String> getStringParamExpected(HttpExchange t, IQeuryInterface v, String param) throws IOException {
+            String val = getStringParam(v, param);
+            if (val == null || val.equals("")) {
+                produceParameterNotFound(t, param);
+                return Optional.empty();
+            }
+            return Optional.of(val);
         }
     }
 
