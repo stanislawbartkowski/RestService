@@ -2,14 +2,15 @@ package com.rest.restservice;
 
 import java.util.logging.Logger;
 
-class RestLogger {
-    static Logger L = Logger.getLogger("com.rest.restservice.RestHelper");
+public class RestLogger {
 
-    static void info(String s) {
+    public static Logger L = Logger.getLogger("com.rest.restservice.RestHelper");
+
+    public static void info(String s) {
         L.info(s);
     }
 
-    static void debug(String s) {
+    public static void debug(String s) {
 //        L.log(Level.FINE,s);
         info(s);
     }

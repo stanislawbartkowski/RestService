@@ -6,6 +6,18 @@ public class ParamValue {
     final int intvalue;
     final String stringvalue;
 
+    public boolean isLogTrue() {
+        return logvalue;
+    }
+
+    public int getIntvalue() {
+        return intvalue;
+    }
+
+    public String getStringvalue() {
+        return stringvalue;
+    }
+
     ParamValue() {
         this.logvalue = false;
         this.intvalue = -1;

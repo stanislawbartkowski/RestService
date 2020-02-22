@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -17,8 +18,6 @@ import java.util.logging.Level;
 
 public class RestHelper {
 
-    private static final String RESTPREFIX = "/rest/";
-
     public static final String POST = "POST";
     public static final String GET = "GET";
     public static final String PUT = "PUT";
@@ -28,11 +27,10 @@ public class RestHelper {
     private static final String TOKEN = "Token";
     private static final String AUTHORIZATION = "Authorization";
 
-    private static final int HTTPOK = 200;
-    public static final int HTTPNODATA = 204;
-    public static final int HTTPMETHODNOTALLOWED = 405;
-    public static final int HTTPBADREQUEST = 400;
-
+    private static final int HTTPOK = HttpURLConnection.HTTP_OK;
+    public static final int HTTPNODATA = HttpURLConnection.HTTP_NO_CONTENT;
+    public static final int HTTPMETHODNOTALLOWED = HttpURLConnection.HTTP_BAD_METHOD;
+    public static final int HTTPBADREQUEST = HttpURLConnection.HTTP_BAD_REQUEST;
 
     public interface IQueryInterface {
         Map<String, ParamValue> getValues();
@@ -50,28 +48,26 @@ public class RestHelper {
 
     abstract public static class RestServiceHelper implements HttpHandler {
         final String url;
-        final String expectedMethod;
         final boolean tokenexpected;
 
+        public abstract RestParams getParams(HttpExchange httpExchange) throws IOException;
         public abstract void servicehandle(HttpExchange httpExchange, IQueryInterface v) throws IOException;
 
-        public abstract RestParams getParams() throws IOException;
 
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
-            Optional<IQueryInterface> v = verifyURL(httpExchange, getParams());
-            if (!v.isPresent()) return;
             try {
+                Optional<IQueryInterface> v = verifyURL(httpExchange, getParams(httpExchange));
+                if (!v.isPresent()) return;
                 servicehandle(httpExchange, v.get());
             } catch (Exception e) {
                 RestLogger.L.log(Level.SEVERE, "Error while handling service", e);
-                throw e;
+                produceResponse(httpExchange,Optional.of(e.getMessage()),HTTPBADREQUEST);
             }
         }
 
-        protected RestServiceHelper(String url, String expectedMethod, boolean tokenexpected) {
+        protected RestServiceHelper(String url, boolean tokenexpected) {
             this.url = url;
-            this.expectedMethod = expectedMethod;
             this.tokenexpected = tokenexpected;
         }
 
@@ -124,10 +120,10 @@ public class RestHelper {
             produceResponse(t, Optional.empty(), HTTPNODATA);
         }
 
-        private boolean verifyMethod(HttpExchange t) throws IOException {
+        private boolean verifyMethod(HttpExchange t,RestParams pars) throws IOException {
 
-            if (OPTIONS.equals(t.getRequestMethod()) || expectedMethod.equals(t.getRequestMethod())) return true;
-            String message = expectedMethod + " method expected, " + t.getRequestMethod() + " provided.";
+            if (OPTIONS.equals(t.getRequestMethod()) || pars.getRequestMethod().equals(t.getRequestMethod())) return true;
+            String message = pars.getRequestMethod() + " method expected, " + t.getRequestMethod() + " provided.";
             produceResponse(t, Optional.of(message), HTTPMETHODNOTALLOWED);
             return false;
         }
@@ -151,13 +147,24 @@ public class RestHelper {
             return token;
         }
 
+        protected String[] getPath(HttpExchange t) {
+            String u = t.getRequestURI().getPath();
+            String[] res = u.substring(1).split("/");
+            return res;
+        }
+
+        private Optional<IQueryInterface> returnBad(HttpExchange t,String errmess) throws IOException {
+            RestLogger.L.severe(errmess);
+            produceResponse(t, Optional.of(errmess), HTTPBADREQUEST);
+            return Optional.empty();
+        }
 
         private Optional<IQueryInterface> verifyURL(HttpExchange t, RestParams pars) throws IOException {
 
             final Map<String, RestParams.RestParam> params = pars.getParams();
 
             RestLogger.debug(t.getRequestMethod() + " " + t.getRequestURI().getQuery());
-            if (!verifyMethod(t)) return Optional.empty();
+            if (!verifyMethod(t,pars)) return Optional.empty();
             if (tokenexpected && !getAuthorizationToken(t, tokenexpected).isPresent()) Optional.empty();
             // verify param
             // check if parameters allowed
@@ -171,8 +178,7 @@ public class RestHelper {
                     String s = vv[0];
                     String val = vv.length == 1 ? "" : vv[1];
                     if (!params.containsKey(s)) {
-                        produceResponse(t, Optional.of("Parameter " + s + " not expected."), HTTPBADREQUEST);
-                        return Optional.empty();
+                        returnBad(t,"Parameter " + s + " not expected.");
                     }
                     // get value
                     RestParams.RestParam rpara = params.get(s);
@@ -183,8 +189,8 @@ public class RestHelper {
                                 break;
                             }
                             // incorrect true or false
-                            produceResponse(t, Optional.of("Parameter " + s + "?" + val + " true or false expected"), HTTPBADREQUEST);
-                            return Optional.empty();
+                            String errmess = "Parameter " + s + " ? " + val + " true or false expected";
+                            returnBad(t,errmess);
                         }
                         case INT: {
                             try {
@@ -192,8 +198,7 @@ public class RestHelper {
                                 v.values.put(s, new ParamValue(i));
                                 break;
                             } catch (NumberFormatException e) {
-                                produceResponse(t, Optional.of("Parameter " + s + "?" + val + " incorrect integer value"), HTTPBADREQUEST);
-                                Optional.empty();
+                                returnBad(t,"Parameter " + s + "?" + val + " incorrect integer value");
                             }
                         }
                         case STRING: {
@@ -219,7 +224,7 @@ public class RestHelper {
                 RestLogger.L.info(OPTIONS + " request");
                 produceOKResponse(t, Optional.of("OK"));
                 // return false, to avoid sending the content for OPTIONS
-                Optional.empty();
+                return Optional.empty();
             }
             return Optional.of(v);
         }
@@ -248,7 +253,7 @@ public class RestHelper {
 
     public static void registerService(HttpServer server, RestServiceHelper service) {
         RestLogger.info("Register service: " + service.url);
-        server.createContext(RESTPREFIX + service.url, service);
+        server.createContext("/" + service.url, service);
     }
 
 }

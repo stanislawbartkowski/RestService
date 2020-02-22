@@ -5,11 +5,21 @@ import java.util.HashMap;
 
 public class RestParams {
 
+    public RestParams(String requestMethod) {
+        this.requestMethod = requestMethod;
+    }
+
     public Map<String, RestParam> getParams() {
         return params;
     }
 
     private final Map<String, RestParam> params = new HashMap<String, RestParam>();
+    private final String requestMethod;
+
+    public String getRequestMethod() {
+        return requestMethod;
+    }
+
 
     public static class RestParam {
         final PARAMTYPE ptype;
@@ -29,7 +39,7 @@ public class RestParams {
         }
     }
 
-    public  void addParam(String paramName, PARAMTYPE ptype) {
+    public void addParam(String paramName, PARAMTYPE ptype) {
         params.put(paramName, new RestParam(ptype));
     }
 
