@@ -34,64 +34,11 @@ public class RestHelper {
     public static final int HTTPBADREQUEST = 400;
 
 
-    public enum PARAMTYPE {
-        BOOLEAN, INT, STRING
-    }
-
-    public static class ParamValue {
-        final boolean logvalue;
-        final int intvalue;
-        final String stringvalue;
-
-        ParamValue() {
-            this.logvalue = false;
-            this.intvalue = -1;
-            this.stringvalue = null;
-        }
-
-        ParamValue(boolean logvalue) {
-            this.logvalue = logvalue;
-            this.intvalue = -1;
-            this.stringvalue = null;
-        }
-
-        ParamValue(int intvalue) {
-            this.intvalue = intvalue;
-            this.logvalue = false;
-            this.stringvalue = null;
-        }
-
-        public ParamValue(String stringvalue) {
-            this.intvalue = -1;
-            this.logvalue = false;
-            this.stringvalue = stringvalue;
-        }
-
-    }
-
-    public static class RestParam {
-        final PARAMTYPE ptype;
-        final boolean obligatory;
-        final ParamValue defa;
-
-        RestParam(PARAMTYPE ptype) {
-            this.ptype = ptype;
-            this.obligatory = true;
-            defa = new ParamValue();
-        }
-
-        RestParam(PARAMTYPE ptype, ParamValue defa) {
-            this.ptype = ptype;
-            this.obligatory = false;
-            this.defa = defa;
-        }
-    }
-
-    public interface IQeuryInterface {
+    public interface IQueryInterface {
         Map<String, ParamValue> getValues();
     }
 
-    private static class QueryInterface implements IQeuryInterface {
+    private static class QueryInterface implements IQueryInterface {
 
         final Map<String, ParamValue> values = new HashMap<String, ParamValue>();
 
@@ -105,13 +52,14 @@ public class RestHelper {
         final String url;
         final String expectedMethod;
         final boolean tokenexpected;
-        final Map<String, RestParam> params = new HashMap<String, RestParam>();
 
-        public abstract void servicehandle(HttpExchange httpExchange, IQeuryInterface v) throws IOException;
+        public abstract void servicehandle(HttpExchange httpExchange, IQueryInterface v) throws IOException;
+
+        public abstract RestParams getParams() throws IOException;
 
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
-            Optional<IQeuryInterface> v = verifyURL(httpExchange);
+            Optional<IQueryInterface> v = verifyURL(httpExchange, getParams());
             if (!v.isPresent()) return;
             try {
                 servicehandle(httpExchange, v.get());
@@ -125,14 +73,6 @@ public class RestHelper {
             this.url = url;
             this.expectedMethod = expectedMethod;
             this.tokenexpected = tokenexpected;
-        }
-
-        protected void addParam(String paramName, PARAMTYPE ptype) {
-            params.put(paramName, new RestParam(ptype));
-        }
-
-        protected void addParam(String paramName, PARAMTYPE ptype, ParamValue defa) {
-            params.put(paramName, new RestParam(ptype, defa));
         }
 
         private void addCORSHeader(HttpExchange t) {
@@ -212,7 +152,10 @@ public class RestHelper {
         }
 
 
-        private Optional<IQeuryInterface> verifyURL(HttpExchange t) throws IOException {
+        private Optional<IQueryInterface> verifyURL(HttpExchange t, RestParams pars) throws IOException {
+
+            final Map<String, RestParams.RestParam> params = pars.getParams();
+
             RestLogger.debug(t.getRequestMethod() + " " + t.getRequestURI().getQuery());
             if (!verifyMethod(t)) return Optional.empty();
             if (tokenexpected && !getAuthorizationToken(t, tokenexpected).isPresent()) Optional.empty();
@@ -232,7 +175,7 @@ public class RestHelper {
                         return Optional.empty();
                     }
                     // get value
-                    RestParam rpara = params.get(s);
+                    RestParams.RestParam rpara = params.get(s);
                     switch (rpara.ptype) {
                         case BOOLEAN: {
                             if (val.equals("true") || val.equals("false")) {
@@ -281,19 +224,19 @@ public class RestHelper {
             return Optional.of(v);
         }
 
-        protected boolean getLogParam(IQeuryInterface v, String param) {
+        protected boolean getLogParam(IQueryInterface v, String param) {
             return v.getValues().get(param).logvalue;
         }
 
-        protected int getIntParam(IQeuryInterface v, String param) {
+        protected int getIntParam(IQueryInterface v, String param) {
             return v.getValues().get(param).intvalue;
         }
 
-        protected String getStringParam(IQeuryInterface v, String param) {
+        protected String getStringParam(IQueryInterface v, String param) {
             return v.getValues().get(param).stringvalue;
         }
 
-        protected Optional<String> getStringParamExpected(HttpExchange t, IQeuryInterface v, String param) throws IOException {
+        protected Optional<String> getStringParamExpected(HttpExchange t, IQueryInterface v, String param) throws IOException {
             String val = getStringParam(v, param);
             if (val == null || val.equals("")) {
                 produceParameterNotFound(t, param);
