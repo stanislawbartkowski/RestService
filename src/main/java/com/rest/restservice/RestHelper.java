@@ -9,14 +9,12 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 
 
 public class RestHelper {
+
 
     public static final String POST = "POST";
     public static final String GET = "GET";
@@ -32,18 +30,42 @@ public class RestHelper {
     public static final int HTTPMETHODNOTALLOWED = HttpURLConnection.HTTP_BAD_METHOD;
     public static final int HTTPBADREQUEST = HttpURLConnection.HTTP_BAD_REQUEST;
 
+    // 'Content-Type: application/json'
+
     public interface IQueryInterface {
         Map<String, ParamValue> getValues();
+
+        RestParams getRestParams();
+
+        HttpExchange getT();
     }
 
     private static class QueryInterface implements IQueryInterface {
 
-        final Map<String, ParamValue> values = new HashMap<String, ParamValue>();
+        private final Map<String, ParamValue> values = new HashMap<String, ParamValue>();
+        private final RestParams pars;
+        private final HttpExchange t;
+
+        private QueryInterface(RestParams pars, HttpExchange t) {
+            this.pars = pars;
+            this.t = t;
+        }
 
         @Override
         public Map<String, ParamValue> getValues() {
             return values;
         }
+
+        @Override
+        public RestParams getRestParams() {
+            return pars;
+        }
+
+        @Override
+        public HttpExchange getT() {
+            return t;
+        }
+
     }
 
     abstract public static class RestServiceHelper implements HttpHandler {
@@ -51,18 +73,36 @@ public class RestHelper {
         final boolean tokenexpected;
 
         public abstract RestParams getParams(HttpExchange httpExchange) throws IOException;
-        public abstract void servicehandle(HttpExchange httpExchange, IQueryInterface v) throws IOException;
+
+        public abstract void servicehandle(IQueryInterface v) throws IOException;
 
 
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             try {
-                Optional<IQueryInterface> v = verifyURL(httpExchange, getParams(httpExchange));
+                RestParams prest = getParams(httpExchange);
+                Optional<IQueryInterface> v = verifyURL(httpExchange, prest);
                 if (!v.isPresent()) return;
-                servicehandle(httpExchange, v.get());
+                servicehandle(v.get());
             } catch (Exception e) {
                 RestLogger.L.log(Level.SEVERE, "Error while handling service", e);
-                produceResponse(httpExchange,Optional.of(e.getMessage()),HTTPBADREQUEST);
+                // create ad hoc class
+                produceResponse(new IQueryInterface() {
+                    @Override
+                    public Map<String, ParamValue> getValues() {
+                        return null;
+                    }
+
+                    @Override
+                    public RestParams getRestParams() {
+                        return new RestParams(GET, Optional.empty(),false, new ArrayList<String>());
+                    }
+
+                    @Override
+                    public HttpExchange getT() {
+                        return httpExchange;
+                    }
+                }, Optional.of(e.getMessage()), HTTPBADREQUEST);
             }
         }
 
@@ -71,19 +111,38 @@ public class RestHelper {
             this.tokenexpected = tokenexpected;
         }
 
-        private void addCORSHeader(HttpExchange t) {
-            t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-            t.getResponseHeaders().set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE,OPTIONS");
-            t.getResponseHeaders().set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,Authorization");
+        private void addCORSHeader(IQueryInterface v) {
+            HttpExchange t = v.getT();
+            RestParams pars = v.getRestParams();
+            StringBuilder bui = new StringBuilder(OPTIONS);
+            for (String m : pars.getMethodsAllowed()) bui.append(", " + m);
+            t.getResponseHeaders().set("Access-Control-Allow-Methods", bui.toString());
+            if (pars.isCrossedAllowed()) {
+                t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+                t.getResponseHeaders().set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,Authorization");
+            }
+            if (pars.getResponseCpntent().isPresent()) {
+                switch (pars.getResponseCpntent().get()) {
+                    case JSON:
+                        t.getResponseHeaders().set("Content-Type", "application/json");
+                        break;
+                    case TEXT:
+                        t.getResponseHeaders().set("Content-Type", "text/plain");
+                        break;
+                }
+            }
+            t.getResponseHeaders().set("charset", "utf8");
         }
 
-        private void addTokenHeader(HttpExchange t, String token) {
-            t.getResponseHeaders().set(AUTHORIZATION, TOKEN + " " + token);
+        // 'Content-Type: application/json'
+        private void addTokenHeader(IQueryInterface v, String token) {
+            v.getT().getResponseHeaders().set(AUTHORIZATION, TOKEN + " " + token);
         }
 
-        protected void produceResponse(HttpExchange t, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
-            addCORSHeader(t);
-            if (token.isPresent()) addTokenHeader(t, token.get());
+        protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
+            addCORSHeader(v);
+            if (token.isPresent()) addTokenHeader(v, token.get());
+            HttpExchange t = v.getT();
             if ((!message.isPresent()) || message.get().equals("")) t.sendResponseHeaders(HTTPNODATA, 0);
             else {
                 byte[] response = message.get().getBytes();
@@ -94,41 +153,45 @@ public class RestHelper {
             }
         }
 
-        protected void produceResponse(HttpExchange t, Optional<String> message, int HTTPResponse) throws IOException {
-            produceResponse(t, message, HTTPResponse, Optional.empty());
+        protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse) throws IOException {
+            produceResponse(v, message, HTTPResponse, Optional.empty());
         }
 
-        protected void produceParameterNotFound(HttpExchange t, String s) throws IOException {
-            produceResponse(t, Optional.of("Parameter " + s + " not found in url"), HTTPBADREQUEST);
+        protected void produceParameterNotFound(IQueryInterface v, String s) throws IOException {
+            produceResponse(v, Optional.of("Parameter " + s + " not found in url"), HTTPBADREQUEST);
         }
 
 
-        protected void produceOKResponse(HttpExchange t, Optional<String> message, Optional<String> token) throws IOException {
-            produceResponse(t, message, HTTPOK, token);
+        protected void produceOKResponse(IQueryInterface v, Optional<String> message, Optional<String> token) throws IOException {
+            produceResponse(v, message, HTTPOK, token);
         }
 
-        protected void produceOKResponse(HttpExchange t, Optional<String> message) throws IOException {
-            produceOKResponse(t, message, Optional.empty());
+        protected void produceOKResponse(IQueryInterface v, Optional<String> message) throws IOException {
+            produceOKResponse(v, message, Optional.empty());
         }
 
-        protected void produceOKResponse(HttpExchange t, String message) throws IOException {
-            if (message == null || message.equals("")) produceNODATAResponse(t);
-            else produceOKResponse(t, Optional.of(message), Optional.empty());
+        protected void produceOKResponse(IQueryInterface v, String message) throws IOException {
+            if (message == null || message.equals("")) produceNODATAResponse(v);
+            else produceOKResponse(v, Optional.of(message), Optional.empty());
         }
 
-        protected void produceNODATAResponse(HttpExchange t) throws IOException {
-            produceResponse(t, Optional.empty(), HTTPNODATA);
+        protected void produceNODATAResponse(IQueryInterface v) throws IOException {
+            produceResponse(v, Optional.empty(), HTTPNODATA);
         }
 
-        private boolean verifyMethod(HttpExchange t,RestParams pars) throws IOException {
+        private boolean verifyMethod(IQueryInterface v) throws IOException {
 
-            if (OPTIONS.equals(t.getRequestMethod()) || pars.getRequestMethod().equals(t.getRequestMethod())) return true;
+            HttpExchange t = v.getT();
+            RestParams pars = v.getRestParams();
+            if (OPTIONS.equals(t.getRequestMethod()) || pars.getRequestMethod().equals(t.getRequestMethod()))
+                return true;
             String message = pars.getRequestMethod() + " method expected, " + t.getRequestMethod() + " provided.";
-            produceResponse(t, Optional.of(message), HTTPMETHODNOTALLOWED);
+            produceResponse(v, Optional.of(message), HTTPMETHODNOTALLOWED);
             return false;
         }
 
-        protected Optional<String> getAuthorizationToken(HttpExchange t) {
+        protected Optional<String> getAuthorizationToken(IQueryInterface v) {
+            HttpExchange t = v.getT();
             List<String> auth = t.getRequestHeaders().get(AUTHORIZATION);
             if (auth == null || auth.isEmpty()) return Optional.empty();
             for (String s : auth) {
@@ -138,10 +201,10 @@ public class RestHelper {
             return Optional.empty();
         }
 
-        protected Optional<String> getAuthorizationToken(HttpExchange t, boolean expected) throws IOException {
-            Optional<String> token = getAuthorizationToken(t);
+        protected Optional<String> getAuthorizationToken(IQueryInterface v, boolean expected) throws IOException {
+            Optional<String> token = getAuthorizationToken(v);
             if ((!token.isPresent() || token.get().equals("")) && expected) {
-                produceResponse(t, Optional.of("Authorization token is expected."), HTTPBADREQUEST);
+                produceResponse(v, Optional.of("Authorization token is expected."), HTTPBADREQUEST);
                 return Optional.empty();
             }
             return token;
@@ -153,22 +216,22 @@ public class RestHelper {
             return res;
         }
 
-        private Optional<IQueryInterface> returnBad(HttpExchange t,String errmess) throws IOException {
+        private Optional<IQueryInterface> returnBad(IQueryInterface v, String errmess) throws IOException {
             RestLogger.L.severe(errmess);
-            produceResponse(t, Optional.of(errmess), HTTPBADREQUEST);
+            produceResponse(v, Optional.of(errmess), HTTPBADREQUEST);
             return Optional.empty();
         }
 
         private Optional<IQueryInterface> verifyURL(HttpExchange t, RestParams pars) throws IOException {
 
             final Map<String, RestParams.RestParam> params = pars.getParams();
+            QueryInterface v = new QueryInterface(pars, t);
 
             RestLogger.debug(t.getRequestMethod() + " " + t.getRequestURI().getQuery());
-            if (!verifyMethod(t,pars)) return Optional.empty();
-            if (tokenexpected && !getAuthorizationToken(t, tokenexpected).isPresent()) Optional.empty();
+            if (!verifyMethod(v)) return Optional.empty();
+            if (tokenexpected && !getAuthorizationToken(v, tokenexpected).isPresent()) Optional.empty();
             // verify param
             // check if parameters allowed
-            QueryInterface v = new QueryInterface();
             if (t.getRequestURI().getQuery() != null) {
                 String qq = t.getRequestURI().getQuery();
                 String query = URLDecoder.decode(qq, StandardCharsets.UTF_8.toString());
@@ -178,7 +241,7 @@ public class RestHelper {
                     String s = vv[0];
                     String val = vv.length == 1 ? "" : vv[1];
                     if (!params.containsKey(s)) {
-                        returnBad(t,"Parameter " + s + " not expected.");
+                        returnBad(v, "Parameter " + s + " not expected.");
                     }
                     // get value
                     RestParams.RestParam rpara = params.get(s);
@@ -190,7 +253,7 @@ public class RestHelper {
                             }
                             // incorrect true or false
                             String errmess = "Parameter " + s + " ? " + val + " true or false expected";
-                            returnBad(t,errmess);
+                            returnBad(v, errmess);
                         }
                         case INT: {
                             try {
@@ -198,7 +261,7 @@ public class RestHelper {
                                 v.values.put(s, new ParamValue(i));
                                 break;
                             } catch (NumberFormatException e) {
-                                returnBad(t,"Parameter " + s + "?" + val + " incorrect integer value");
+                                returnBad(v, "Parameter " + s + "?" + val + " incorrect integer value");
                             }
                         }
                         case STRING: {
@@ -212,7 +275,7 @@ public class RestHelper {
             for (String s : params.keySet()) {
                 if (!v.values.containsKey(s)) {
                     if (params.get(s).obligatory) {
-                        produceParameterNotFound(t, s);
+                        produceParameterNotFound(v, s);
                         return Optional.empty();
                     }
                     // set default value
@@ -222,7 +285,7 @@ public class RestHelper {
 
             if (OPTIONS.equals(t.getRequestMethod())) {
                 RestLogger.L.info(OPTIONS + " request");
-                produceOKResponse(t, Optional.of("OK"));
+                produceOKResponse(v, Optional.of("OK"));
                 // return false, to avoid sending the content for OPTIONS
                 return Optional.empty();
             }
@@ -241,10 +304,10 @@ public class RestHelper {
             return v.getValues().get(param).stringvalue;
         }
 
-        protected Optional<String> getStringParamExpected(HttpExchange t, IQueryInterface v, String param) throws IOException {
+        protected Optional<String> getStringParamExpected(IQueryInterface v, String param) throws IOException {
             String val = getStringParam(v, param);
             if (val == null || val.equals("")) {
-                produceParameterNotFound(t, param);
+                produceParameterNotFound(v, param);
                 return Optional.empty();
             }
             return Optional.of(val);
