@@ -26,7 +26,7 @@ public class RestParams {
     private final boolean crossedAllowed;
 
 
-    public RestParams(String requestMethod,Optional<CONTENT> responseContent,boolean crossedAllowed,List<String> methodsAllowed) {
+    public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed) {
         this.requestMethod = requestMethod;
         this.responseContent = responseContent;
         this.crossedAllowed = crossedAllowed;
