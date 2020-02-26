@@ -1,5 +1,20 @@
 package com.rest.restservice;
 
+/*
+ * Copyright 2020 stanislawbartkowski@gmail.com
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -12,10 +27,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.logging.Level;
 
+/**
+ * Main helper module. Contains supporting logic for handling REST services. The custom service class should extend RestServiceHelper class and implement two abstract methods.<br>
+ *     General overwiew: <br>
+ *     IQeuryInterface - request service context, returns HTTPExchange, parsed query values and query parameters definition.<br>
+ *     RestServiceHelper - the custom class should extend this abstract class<br>
+ */
 
 public class RestHelper {
 
-
+    /** public values, HTTP methods */
     public static final String POST = "POST";
     public static final String GET = "GET";
     public static final String PUT = "PUT";
@@ -25,18 +46,31 @@ public class RestHelper {
     private static final String TOKEN = "Token";
     private static final String AUTHORIZATION = "Authorization";
 
-    private static final int HTTPOK = HttpURLConnection.HTTP_OK;
+    /** public values, used HTTP code responses */
+    public static final int HTTPOK = HttpURLConnection.HTTP_OK;
     public static final int HTTPNODATA = HttpURLConnection.HTTP_NO_CONTENT;
     public static final int HTTPMETHODNOTALLOWED = HttpURLConnection.HTTP_BAD_METHOD;
     public static final int HTTPBADREQUEST = HttpURLConnection.HTTP_BAD_REQUEST;
 
-    // 'Content-Type: application/json'
 
+    /** Context, QueryInterface used to interact between handle method and RestHelper services */
     public interface IQueryInterface {
+        /**
+         * THe parsed query URL part pairing query parameter and current value.
+         * Important: it is the responsibility of the application to get proper (boolean, int or string) value from the map
+         * @return Map query parameter to value retrieved from URL
+         */
         Map<String, ParamValue> getValues();
 
+        /**
+         * REST service definition
+         * @return RestParams class containing the REST service specification.
+         */
         RestParams getRestParams();
 
+        /**
+         * @return Current HTTPExchange. It is the same value as parameter to getParams abstract method.
+         */
         HttpExchange getT();
     }
 
@@ -68,21 +102,50 @@ public class RestHelper {
 
     }
 
+    /**
+     * Helper class for handling REST service. The client service class should extend this abstract class.
+     */
     abstract public static class RestServiceHelper implements HttpHandler {
-        final String url;
-        final boolean tokenexpected;
+        private final String url;
+        private final boolean tokenexpected;
 
+        /**
+         * Abstract method to be implemented. Is called only once after the REST query was received and is valid during current call.
+         * The method can dynamically define REST service according to REST url.
+         *
+         * @param httpExchange  Current HTTPExchange
+         * @return RestParam current REST call specification.
+         * @throws IOException In case of any problem. It the exception is throws then the servicehandle method is not called.
+         */
         public abstract RestParams getParams(HttpExchange httpExchange) throws IOException;
 
+        /**
+         * Custom logic to handle REST request
+         * @param v Context,
+         *          getValues contains parsed URL query parameter values
+         *          getRestParans : returned by getParams
+         *          getT : current HTTPExchange handler
+         * @throws IOException
+         */
         public abstract void servicehandle(IQueryInterface v) throws IOException;
 
 
+        /**
+         * Abstract method enforced by com.sun.net.httpserver.HttpHandler abstract class.
+         * @param httpExchange HttpExchange
+         * @throws IOException
+         */
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
+            // main logic of REST service handling
             try {
+                // call custom (abstract) method to get REST service specification
                 RestParams prest = getParams(httpExchange);
+                // reads and validates query parameters, if any error found (for instance: incorrect query parameter value), return proper HTTP error code
                 Optional<IQueryInterface> v = verifyURL(httpExchange, prest);
+                // if any error found (for instance: incorrect query parameter value), return proper HTTP error code
                 if (!v.isPresent()) return;
+                // call abstract method, custom REST service logic
                 servicehandle(v.get());
             } catch (Exception e) {
                 RestLogger.L.log(Level.SEVERE, "Error while handling service", e);
@@ -106,6 +169,11 @@ public class RestHelper {
             }
         }
 
+        /**
+         * Constructor
+         * @param url  The REST service URL, Important : without leading / (look registerService method)
+         * @param tokenexpected If security token is expected for this call
+         */
         protected RestServiceHelper(String url, boolean tokenexpected) {
             this.url = url;
             this.tokenexpected = tokenexpected;
@@ -121,8 +189,8 @@ public class RestHelper {
                 t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
                 t.getResponseHeaders().set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,Authorization");
             }
-            if (pars.getResponseCpntent().isPresent()) {
-                switch (pars.getResponseCpntent().get()) {
+            if (pars.getResponseContent().isPresent()) {
+                switch (pars.getResponseContent().get()) {
                     case JSON:
                         t.getResponseHeaders().set("Content-Type", "application/json");
                         break;
@@ -134,11 +202,18 @@ public class RestHelper {
             t.getResponseHeaders().set("charset", "utf8");
         }
 
-        // 'Content-Type: application/json'
         private void addTokenHeader(IQueryInterface v, String token) {
             v.getT().getResponseHeaders().set(AUTHORIZATION, TOKEN + " " + token);
         }
 
+        /**
+         * General helper method to use by custom servicehandle method
+         * @param v Context handler
+         * @param message Optionnal, response content, if empty the no content is returned.
+         * @param HTTPResponse HTTP response code, some codes are specified in as public static attributes
+         * @param token  Optional, security token to be included in the response
+         * @throws IOException
+         */
         protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
             addCORSHeader(v);
             if (token.isPresent()) addTokenHeader(v, token.get());
@@ -153,28 +228,49 @@ public class RestHelper {
             }
         }
 
+        /**
+         * Overloaded produceResponse, empty security token
+         */
         protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse) throws IOException {
             produceResponse(v, message, HTTPResponse, Optional.empty());
         }
 
+        /**
+         * Overloaded produceResponse, should be used if the expected query URL parameter is not found
+         * @param v Context
+         * @param s query parameter name
+         * @throws IOException
+         */
         protected void produceParameterNotFound(IQueryInterface v, String s) throws IOException {
             produceResponse(v, Optional.of("Parameter " + s + " not found in url"), HTTPBADREQUEST);
         }
 
 
+        /**
+         * Overloaded produceResponse, HTTPOK response code is included
+         */
         protected void produceOKResponse(IQueryInterface v, Optional<String> message, Optional<String> token) throws IOException {
             produceResponse(v, message, HTTPOK, token);
         }
 
+        /**
+         * Overloaded prodecureResponse, HTTPOK response code and empty token
+         */
         protected void produceOKResponse(IQueryInterface v, Optional<String> message) throws IOException {
             produceOKResponse(v, message, Optional.empty());
         }
 
+        /**
+         * Overloaded produceResponse, if message null or empty include HTTPNODATA response code
+         */
         protected void produceOKResponse(IQueryInterface v, String message) throws IOException {
             if (message == null || message.equals("")) produceNODATAResponse(v);
             else produceOKResponse(v, Optional.of(message), Optional.empty());
         }
 
+        /**
+         * Overloaded produceResponse, returns HTTPNODATA response code
+         */
         protected void produceNODATAResponse(IQueryInterface v) throws IOException {
             produceResponse(v, Optional.empty(), HTTPNODATA);
         }
@@ -190,6 +286,11 @@ public class RestHelper {
             return false;
         }
 
+        /**
+         * Helper method, extract authorizarion token if expected
+         * @param v Context
+         * @return Empty if authorization token not found in the HTTP header
+         */
         protected Optional<String> getAuthorizationToken(IQueryInterface v) {
             HttpExchange t = v.getT();
             List<String> auth = t.getRequestHeaders().get(AUTHORIZATION);
@@ -201,6 +302,13 @@ public class RestHelper {
             return Optional.empty();
         }
 
+        /**
+         * Get authorization token, if token expected prepare HTTPBADREUQUEST response if token not found
+         * @param v Context
+         * @param expected if true and token not found produce HTTPBADREQUEST response
+         * @return if Optional.empty do not proceed, HTTPBADREQUEST response already sent
+         * @throws IOException
+         */
         protected Optional<String> getAuthorizationToken(IQueryInterface v, boolean expected) throws IOException {
             Optional<String> token = getAuthorizationToken(v);
             if ((!token.isPresent() || token.get().equals("")) && expected) {
@@ -210,6 +318,11 @@ public class RestHelper {
             return token;
         }
 
+        /**
+         * Parse URL path without query parameters. Break path into subpath
+         * @param t Context
+         * @return String[] containing URL path broken to subpaths.
+         */
         protected String[] getPath(HttpExchange t) {
             String u = t.getRequestURI().getPath();
             String[] res = u.substring(1).split("/");
@@ -292,18 +405,43 @@ public class RestHelper {
             return Optional.of(v);
         }
 
+        /**
+         * Returns logical value for query parameters.
+         * @param v Context
+         * @param param Query param name/key
+         * @return logical value
+         */
         protected boolean getLogParam(IQueryInterface v, String param) {
             return v.getValues().get(param).logvalue;
         }
 
+        /**
+         * Returns integer value for query parameters.
+         * @param v Context
+         * @param param Query param name/key
+         * @return integer value
+         */
         protected int getIntParam(IQueryInterface v, String param) {
             return v.getValues().get(param).intvalue;
         }
 
+        /**
+         * Returns string value for query parameters.
+         * @param v Context
+         * @param param Query param name/key
+         * @return string value
+         */
         protected String getStringParam(IQueryInterface v, String param) {
             return v.getValues().get(param).stringvalue;
         }
 
+        /**
+         * Gets string query value. Produces HTTPBADREQUEST response if parameter is not specified
+         * @param v Context
+         * @param param Key/param name
+         * @return Optional. If empty error response is already produced and do not proceed.
+         * @throws IOException
+         */
         protected Optional<String> getStringParamExpected(IQueryInterface v, String param) throws IOException {
             String val = getStringParam(v, param);
             if (val == null || val.equals("")) {
@@ -314,6 +452,11 @@ public class RestHelper {
         }
     }
 
+    /**
+     * Helper method, register service class in JDK com.sun.net.httpserver.HttpServer;
+     * @param server com.sun.net.httpserver.HttpServer instance
+     * @param service Service class
+     */
     public static void registerService(HttpServer server, RestServiceHelper service) {
         RestLogger.info("Register service: " + service.url);
         server.createContext("/" + service.url, service);
