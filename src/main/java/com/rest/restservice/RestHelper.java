@@ -488,6 +488,17 @@ public class RestHelper {
             }
             return Optional.of(val);
         }
+
+        /**
+         * Get request body as string, allows deploying data
+         * @param v Context
+         * @return String, request body
+         * @throws IOException
+         */
+        protected String getRequestBodyString(IQueryInterface v) throws IOException {
+            InputStream is = v.getT().getRequestBody();
+            return toS(is);
+        }
     }
 
     /**
