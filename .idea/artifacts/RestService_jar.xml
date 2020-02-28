@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="RestService:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/RestService_jar</output-path>
+    <root id="archive" name="RestService.jar">
+      <element id="module-output" name="RestService" />
+    </root>
+  </artifact>
+</component>

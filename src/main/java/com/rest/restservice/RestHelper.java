@@ -14,13 +14,11 @@ package com.rest.restservice;
  */
 
 
-
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -29,14 +27,16 @@ import java.util.logging.Level;
 
 /**
  * Main helper module. Contains supporting logic for handling REST services. The custom service class should extend RestServiceHelper class and implement two abstract methods.<br>
- *     General overwiew: <br>
- *     IQeuryInterface - request service context, returns HTTPExchange, parsed query values and query parameters definition.<br>
- *     RestServiceHelper - the custom class should extend this abstract class<br>
+ * General overwiew: <br>
+ * IQeuryInterface - request service context, returns HTTPExchange, parsed query values and query parameters definition.<br>
+ * RestServiceHelper - the custom class should extend this abstract class<br>
  */
 
 public class RestHelper {
 
-    /** public values, HTTP methods */
+    /**
+     * public values, HTTP methods
+     */
     public static final String POST = "POST";
     public static final String GET = "GET";
     public static final String PUT = "PUT";
@@ -46,24 +46,50 @@ public class RestHelper {
     private static final String TOKEN = "Token";
     private static final String AUTHORIZATION = "Authorization";
 
-    /** public values, used HTTP code responses */
+    /**
+     * public values, used HTTP code responses
+     */
     public static final int HTTPOK = HttpURLConnection.HTTP_OK;
     public static final int HTTPNODATA = HttpURLConnection.HTTP_NO_CONTENT;
     public static final int HTTPMETHODNOTALLOWED = HttpURLConnection.HTTP_BAD_METHOD;
     public static final int HTTPBADREQUEST = HttpURLConnection.HTTP_BAD_REQUEST;
 
+    /**
+     * Helper method to read InputStream to String
+     *
+     * @param i InputStream
+     * @return String
+     * @throws IOException in case of error
+     */
+    public static String toS(InputStream i) throws IOException {
 
-    /** Context, QueryInterface used to interact between handle method and RestHelper services */
+        final int bufferSize = 1024;
+        final char[] buffer = new char[bufferSize];
+        final StringBuilder out = new StringBuilder();
+        Reader in = new InputStreamReader(i, StandardCharsets.UTF_8);
+        int charsRead;
+        while ((charsRead = in.read(buffer, 0, buffer.length)) > 0) {
+            out.append(buffer, 0, charsRead);
+        }
+        return out.toString();
+    }
+
+
+    /**
+     * Context, QueryInterface used to interact between handle method and RestHelper services
+     */
     public interface IQueryInterface {
         /**
          * THe parsed query URL part pairing query parameter and current value.
          * Important: it is the responsibility of the application to get proper (boolean, int or string) value from the map
+         *
          * @return Map query parameter to value retrieved from URL
          */
         Map<String, ParamValue> getValues();
 
         /**
          * REST service definition
+         *
          * @return RestParams class containing the REST service specification.
          */
         RestParams getRestParams();
@@ -113,7 +139,7 @@ public class RestHelper {
          * Abstract method to be implemented. Is called only once after the REST query was received and is valid during current call.
          * The method can dynamically define REST service according to REST url.
          *
-         * @param httpExchange  Current HTTPExchange
+         * @param httpExchange Current HTTPExchange
          * @return RestParam current REST call specification.
          * @throws IOException In case of any problem. It the exception is throws then the servicehandle method is not called.
          */
@@ -121,6 +147,7 @@ public class RestHelper {
 
         /**
          * Custom logic to handle REST request
+         *
          * @param v Context,
          *          getValues contains parsed URL query parameter values
          *          getRestParans : returned by getParams
@@ -132,6 +159,7 @@ public class RestHelper {
 
         /**
          * Abstract method enforced by com.sun.net.httpserver.HttpHandler abstract class.
+         *
          * @param httpExchange HttpExchange
          * @throws IOException
          */
@@ -158,7 +186,7 @@ public class RestHelper {
 
                     @Override
                     public RestParams getRestParams() {
-                        return new RestParams(GET, Optional.empty(),false, new ArrayList<String>());
+                        return new RestParams(GET, Optional.empty(), false, new ArrayList<String>());
                     }
 
                     @Override
@@ -171,7 +199,8 @@ public class RestHelper {
 
         /**
          * Constructor
-         * @param url  The REST service URL, Important : without leading / (look registerService method)
+         *
+         * @param url           The REST service URL, Important : without leading / (look registerService method)
          * @param tokenexpected If security token is expected for this call
          */
         protected RestServiceHelper(String url, boolean tokenexpected) {
@@ -208,10 +237,11 @@ public class RestHelper {
 
         /**
          * General helper method to use by custom servicehandle method
-         * @param v Context handler
-         * @param message Optionnal, response content, if empty the no content is returned.
+         *
+         * @param v            Context handler
+         * @param message      Optionnal, response content, if empty the no content is returned.
          * @param HTTPResponse HTTP response code, some codes are specified in as public static attributes
-         * @param token  Optional, security token to be included in the response
+         * @param token        Optional, security token to be included in the response
          * @throws IOException
          */
         protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
@@ -237,6 +267,7 @@ public class RestHelper {
 
         /**
          * Overloaded produceResponse, should be used if the expected query URL parameter is not found
+         *
          * @param v Context
          * @param s query parameter name
          * @throws IOException
@@ -288,6 +319,7 @@ public class RestHelper {
 
         /**
          * Helper method, extract authorizarion token if expected
+         *
          * @param v Context
          * @return Empty if authorization token not found in the HTTP header
          */
@@ -304,7 +336,8 @@ public class RestHelper {
 
         /**
          * Get authorization token, if token expected prepare HTTPBADREUQUEST response if token not found
-         * @param v Context
+         *
+         * @param v        Context
          * @param expected if true and token not found produce HTTPBADREQUEST response
          * @return if Optional.empty do not proceed, HTTPBADREQUEST response already sent
          * @throws IOException
@@ -320,6 +353,7 @@ public class RestHelper {
 
         /**
          * Parse URL path without query parameters. Break path into subpath
+         *
          * @param t Context
          * @return String[] containing URL path broken to subpaths.
          */
@@ -407,7 +441,8 @@ public class RestHelper {
 
         /**
          * Returns logical value for query parameters.
-         * @param v Context
+         *
+         * @param v     Context
          * @param param Query param name/key
          * @return logical value
          */
@@ -417,7 +452,8 @@ public class RestHelper {
 
         /**
          * Returns integer value for query parameters.
-         * @param v Context
+         *
+         * @param v     Context
          * @param param Query param name/key
          * @return integer value
          */
@@ -427,7 +463,8 @@ public class RestHelper {
 
         /**
          * Returns string value for query parameters.
-         * @param v Context
+         *
+         * @param v     Context
          * @param param Query param name/key
          * @return string value
          */
@@ -437,7 +474,8 @@ public class RestHelper {
 
         /**
          * Gets string query value. Produces HTTPBADREQUEST response if parameter is not specified
-         * @param v Context
+         *
+         * @param v     Context
          * @param param Key/param name
          * @return Optional. If empty error response is already produced and do not proceed.
          * @throws IOException
@@ -454,7 +492,8 @@ public class RestHelper {
 
     /**
      * Helper method, register service class in JDK com.sun.net.httpserver.HttpServer;
-     * @param server com.sun.net.httpserver.HttpServer instance
+     *
+     * @param server  com.sun.net.httpserver.HttpServer instance
      * @param service Service class
      */
     public static void registerService(HttpServer server, RestServiceHelper service) {
