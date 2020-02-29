@@ -1,6 +1,8 @@
 # RestService
 Javadoc : https://stanislawbartkowski.github.io/javadoc/RestService/
 
+https://hoteljavaopensource.blogspot.com/2020/02/simple-restservice-library.html
+
 # Installation
 
 >git clone https://github.com/stanislawbartkowski/RestService.git<br>
