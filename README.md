@@ -1,2 +1,2 @@
 # RestService
-JavaDoc : https://stanislawbartkowski.github.io/javadoc/RestService/
+Javadoc : https://stanislawbartkowski.github.io/javadoc/RestService/
