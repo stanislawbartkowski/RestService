@@ -19,6 +19,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.*;
+import java.lang.management.OperatingSystemMXBean;
 import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -186,7 +187,7 @@ public class RestHelper {
 
                     @Override
                     public RestParams getRestParams() {
-                        return new RestParams(GET, Optional.empty(), false, new ArrayList<String>());
+                        return new RestParams(GET, Optional.empty(), false, new ArrayList<String>(), Optional.empty());
                     }
 
                     @Override
@@ -216,7 +217,10 @@ public class RestHelper {
             t.getResponseHeaders().set("Access-Control-Allow-Methods", bui.toString());
             if (pars.isCrossedAllowed()) {
                 t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                t.getResponseHeaders().set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,Authorization");
+                String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers";
+                if (pars.getHeadersAllowed().isPresent())
+                    headersAllowed = headersAllowed + "," + pars.getHeadersAllowed().get();
+                t.getResponseHeaders().set("Access-Control-Allow-Headers", headersAllowed);
             }
             if (pars.getResponseContent().isPresent()) {
                 switch (pars.getResponseContent().get()) {
@@ -491,6 +495,7 @@ public class RestHelper {
 
         /**
          * Get request body as string, allows deploying data
+         *
          * @param v Context
          * @return String, request body
          * @throws IOException

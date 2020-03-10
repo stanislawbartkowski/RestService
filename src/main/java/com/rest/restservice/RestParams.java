@@ -27,6 +27,7 @@ public class RestParams {
     private final Map<String, RestParam> params = new HashMap<String, RestParam>();
     private final String requestMethod;
     private final Optional<CONTENT> responseContent;
+    private final Optional<String> headersAllowed;
 
     /**
      * List of allowed method included in the HTTP response. Used to create "Access-Control-Allow-Methods" header key. "OPTIONS" is added automatically.
@@ -56,12 +57,14 @@ public class RestParams {
      * @param responseContent Optional, type of response content, JSON or TEXT
      * @param crossedAllowed CORS allowed
      * @param methodsAllowed List of methods allowed, included in the response Header
+     * @param headersAllowed List of heeaders allowed separated by ,
      */
-    public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed) {
+    public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed, Optional<String> headersAllowed) {
         this.requestMethod = requestMethod;
         this.responseContent = responseContent;
         this.crossedAllowed = crossedAllowed;
         this.methodsAllowed = methodsAllowed;
+        this.headersAllowed = headersAllowed;
     }
 
     /**
@@ -70,6 +73,14 @@ public class RestParams {
      */
     public Map<String, RestParam> getParams() {
         return params;
+    }
+
+    /**
+     * CORT policy, list of header keys allowed
+     * @return List of headers allowed separated by ,
+     */
+    public Optional<String> getHeadersAllowed() {
+        return headersAllowed;
     }
 
     /**
@@ -88,6 +99,8 @@ public class RestParams {
     public Optional<CONTENT> getResponseContent() {
         return responseContent;
     }
+
+
 
     /**
      * Type of response content.
