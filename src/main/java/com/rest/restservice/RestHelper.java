@@ -44,7 +44,7 @@ public class RestHelper {
     public static final String DELETE = "DELETE";
     public static final String OPTIONS = "OPTIONS";
 
-    private static final String TOKEN = "Token";
+    public static final String TOKEN = "Token";
     private static final String AUTHORIZATION = "Authorization";
 
     /**
@@ -218,6 +218,7 @@ public class RestHelper {
             if (pars.isCrossedAllowed()) {
                 t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
                 String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers";
+                if (tokenexpected) headersAllowed = headersAllowed + "," + TOKEN;
                 if (pars.getHeadersAllowed().isPresent())
                     headersAllowed = headersAllowed + "," + pars.getHeadersAllowed().get();
                 t.getResponseHeaders().set("Access-Control-Allow-Headers", headersAllowed);
