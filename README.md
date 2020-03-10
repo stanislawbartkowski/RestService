@@ -6,7 +6,9 @@ https://hoteljavaopensource.blogspot.com/2020/02/simple-restservice-library.html
 # Installation
 
 >git clone https://github.com/stanislawbartkowski/RestService.git<br>
->cd RestService/sh<br>
+>cd RestService<br>
+> mvn clean package<br>
+> cd sh<br>
 >./mvndeploy.sh<br>
 
 It adds RestService jar as a Maven dependency in the local repository.
