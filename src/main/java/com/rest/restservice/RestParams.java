@@ -67,6 +67,10 @@ public class RestParams {
         this.headersAllowed = headersAllowed;
     }
 
+    public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed) {
+        this(requestMethod,responseContent,crossedAllowed,methodsAllowed,Optional.empty());
+    }
+
     /**
      * Get map of expected query URL parameters
      * @return Map of expected parameters
