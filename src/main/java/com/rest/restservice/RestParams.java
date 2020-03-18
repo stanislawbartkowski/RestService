@@ -28,9 +28,12 @@ public class RestParams {
     private final String requestMethod;
     private final Optional<CONTENT> responseContent;
     private final Optional<String> headersAllowed;
+    private final boolean requestDataExpected;
+    private final boolean crossedAllowed;
 
     /**
      * List of allowed method included in the HTTP response. Used to create "Access-Control-Allow-Methods" header key. "OPTIONS" is added automatically.
+     *
      * @return List of responses
      */
     public List<String> getMethodsAllowed() {
@@ -41,6 +44,7 @@ public class RestParams {
 
     /**
      * CORS calls allowed. If true, serveral HTTP header request setting are enabled to allow CORS calls.
+     *
      * @return true, CORS is allowed
      */
 
@@ -48,31 +52,36 @@ public class RestParams {
         return crossedAllowed;
     }
 
-    private final boolean crossedAllowed;
-
+    public boolean isRequestDataExpected() {
+        return requestDataExpected;
+    }
 
     /**
      * General REST service specification
-     * @param requestMethod Request method, PUT, GET, DELETE etc
+     *
+     * @param requestMethod   Request method, PUT, GET, DELETE etc
      * @param responseContent Optional, type of response content, JSON or TEXT
-     * @param crossedAllowed CORS allowed
-     * @param methodsAllowed List of methods allowed, included in the response Header
-     * @param headersAllowed List of heeaders allowed separated by ,
+     * @param crossedAllowed  CORS allowed
+     * @param methodsAllowed  List of methods allowed, included in the response Header
+     * @param headersAllowed  List of heeaders allowed separated by ,
      */
-    public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed, Optional<String> headersAllowed) {
+    public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed, Optional<String> headersAllowed, boolean requestDataExpected) {
         this.requestMethod = requestMethod;
         this.responseContent = responseContent;
         this.crossedAllowed = crossedAllowed;
         this.methodsAllowed = methodsAllowed;
         this.headersAllowed = headersAllowed;
+        this.requestDataExpected = requestDataExpected;
     }
 
+
     public RestParams(String requestMethod, Optional<CONTENT> responseContent, boolean crossedAllowed, List<String> methodsAllowed) {
-        this(requestMethod,responseContent,crossedAllowed,methodsAllowed,Optional.empty());
+        this(requestMethod, responseContent, crossedAllowed, methodsAllowed, Optional.empty(), false);
     }
 
     /**
      * Get map of expected query URL parameters
+     *
      * @return Map of expected parameters
      */
     public Map<String, RestParam> getParams() {
@@ -81,6 +90,7 @@ public class RestParams {
 
     /**
      * CORT policy, list of header keys allowed
+     *
      * @return List of headers allowed separated by ,
      */
     public Optional<String> getHeadersAllowed() {
@@ -89,6 +99,7 @@ public class RestParams {
 
     /**
      * HTTP method for this REST service
+     *
      * @return HTTP method
      */
     public String getRequestMethod() {
@@ -98,6 +109,7 @@ public class RestParams {
 
     /**
      * Get type of respond content TEXT or JSON. if empty Content-Type is not set
+     *
      * @return type of content
      */
     public Optional<CONTENT> getResponseContent() {
@@ -105,21 +117,21 @@ public class RestParams {
     }
 
 
-
     /**
      * Type of response content.
-     *   JSON : Content-Type  application/json
-     *   TEXT: Content-Type text/plain
+     * JSON : Content-Type  application/json
+     * TEXT: Content-Type text/plain
+     * ZIP : Content-Type application/zip
      */
     public enum CONTENT {
-        TEXT, JSON
+        TEXT, JSON, ZIP
     }
 
     /**
      * Query parameter specification<br>
-     *     PARAMTYPE : INT, BOOLEAN or STRING
-     *     obligatory: query parameter is mandatory
-     *     defa : if not mandatory and does not exist use this defa value
+     * PARAMTYPE : INT, BOOLEAN or STRING
+     * obligatory: query parameter is mandatory
+     * defa : if not mandatory and does not exist use this defa value
      */
     public static class RestParam {
         final PARAMTYPE ptype;
@@ -129,6 +141,7 @@ public class RestParams {
         /**
          * Obligatory paraneter
          * Paramter type: INT, BOOLEAN or STRING
+         *
          * @param ptype
          */
         RestParam(PARAMTYPE ptype) {
@@ -139,8 +152,9 @@ public class RestParams {
 
         /**
          * Optional parameter
+         *
          * @param ptype type
-         * @param defa Default value if not specified
+         * @param defa  Default value if not specified
          */
         RestParam(PARAMTYPE ptype, ParamValue defa) {
             this.ptype = ptype;
@@ -151,8 +165,9 @@ public class RestParams {
 
     /**
      * Add parameter obligatory specification
+     *
      * @param paramName Query parameter name
-     * @param ptype Query parameter type
+     * @param ptype     Query parameter type
      */
     public void addParam(String paramName, PARAMTYPE ptype) {
         params.put(paramName, new RestParam(ptype));
@@ -160,9 +175,10 @@ public class RestParams {
 
     /**
      * Add specification of optional parameter
+     *
      * @param paramName Query parameter name
-     * @param ptype Parameter type
-     * @param defa Default value if parameter not found in the URL
+     * @param ptype     Parameter type
+     * @param defa      Default value if parameter not found in the URL
      */
     public void addParam(String paramName, PARAMTYPE ptype, ParamValue defa) {
         params.put(paramName, new RestParam(ptype, defa));

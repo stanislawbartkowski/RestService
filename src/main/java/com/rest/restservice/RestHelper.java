@@ -22,6 +22,7 @@ import java.io.*;
 import java.lang.management.OperatingSystemMXBean;
 import java.net.HttpURLConnection;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.logging.Level;
@@ -99,6 +100,11 @@ public class RestHelper {
          * @return Current HTTPExchange. It is the same value as parameter to getParams abstract method.
          */
         HttpExchange getT();
+
+        /**
+         * @return Request data if expected and exists
+         */
+        ByteBuffer getRequestData();
     }
 
     private static class QueryInterface implements IQueryInterface {
@@ -106,10 +112,12 @@ public class RestHelper {
         private final Map<String, ParamValue> values = new HashMap<String, ParamValue>();
         private final RestParams pars;
         private final HttpExchange t;
+        private final ByteBuffer data;
 
-        private QueryInterface(RestParams pars, HttpExchange t) {
+        private QueryInterface(RestParams pars, HttpExchange t, ByteBuffer data) {
             this.pars = pars;
             this.t = t;
+            this.data = data;
         }
 
         @Override
@@ -125,6 +133,11 @@ public class RestHelper {
         @Override
         public HttpExchange getT() {
             return t;
+        }
+
+        @Override
+        public ByteBuffer getRequestData() {
+            return data;
         }
 
     }
@@ -155,7 +168,7 @@ public class RestHelper {
          *          getT : current HTTPExchange handler
          * @throws IOException
          */
-        public abstract void servicehandle(IQueryInterface v) throws IOException;
+        public abstract void servicehandle(IQueryInterface v) throws IOException, InterruptedException;
 
 
         /**
@@ -187,12 +200,17 @@ public class RestHelper {
 
                     @Override
                     public RestParams getRestParams() {
-                        return new RestParams(GET, Optional.empty(), false, new ArrayList<String>(), Optional.empty());
+                        return new RestParams(GET, Optional.empty(), false, new ArrayList<String>());
                     }
 
                     @Override
                     public HttpExchange getT() {
                         return httpExchange;
+                    }
+
+                    @Override
+                    public ByteBuffer getRequestData() {
+                        return null;
                     }
                 }, Optional.of(e.getMessage()), HTTPBADREQUEST);
             }
@@ -230,6 +248,9 @@ public class RestHelper {
                     case TEXT:
                         t.getResponseHeaders().set("Content-Type", "text/plain");
                         break;
+                    case ZIP:
+                        t.getResponseHeaders().set("Content-Type", "application/zip");
+                        break;
                 }
             }
             t.getResponseHeaders().set("charset", "utf8");
@@ -243,24 +264,41 @@ public class RestHelper {
          * General helper method to use by custom servicehandle method
          *
          * @param v            Context handler
-         * @param message      Optionnal, response content, if empty the no content is returned.
+         * @param response     Optional, response content as sequence of bytes, if empty the no content is returned.
          * @param HTTPResponse HTTP response code, some codes are specified in as public static attributes
          * @param token        Optional, security token to be included in the response
          * @throws IOException
          */
-        protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
+        protected void produceByteResponse(IQueryInterface v, Optional<byte[]> response, int HTTPResponse, Optional<String> token) throws IOException {
             addCORSHeader(v);
             if (token.isPresent()) addTokenHeader(v, token.get());
             HttpExchange t = v.getT();
-            if ((!message.isPresent()) || message.get().equals("")) t.sendResponseHeaders(HTTPNODATA, 0);
+            if ((!response.isPresent()) || response.get().length == 0) t.sendResponseHeaders(HTTPNODATA, 0);
             else {
-                byte[] response = message.get().getBytes();
-                t.sendResponseHeaders(HTTPResponse, response.length);
+                t.sendResponseHeaders(HTTPResponse, response.get().length);
                 try (OutputStream os = t.getResponseBody()) {
-                    os.write(response);
+                    os.write(response.get());
                 }
             }
         }
+
+
+        /**
+         * General helper method to use by custom servicehandle method
+         * The same as produceByteResponse, but the response is a string
+         *
+         * @param v            Context handler
+         * @param message      Optional, response content, if empty the no content is returned.
+         * @param HTTPResponse HTTP response code, some codes are specified in as public static attributes
+         * @param token        Optional, security token to be included in the response
+         * @throws IOException
+         */
+
+        protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
+            Optional<byte[]> resp = message.isPresent() ? Optional.of(message.get().getBytes()) : Optional.empty();
+            produceByteResponse(v, resp, HTTPResponse, token);
+        }
+
 
         /**
          * Overloaded produceResponse, empty security token
@@ -338,6 +376,26 @@ public class RestHelper {
             return Optional.empty();
         }
 
+        private final static int BUFCHUNK = 10;
+
+        private ByteBuffer getRequestData(HttpExchange t) throws IOException {
+            InputStream i = t.getRequestBody();
+            ByteBuffer b = ByteBuffer.allocate(0);
+            while (true) {
+                byte[] by = new byte[BUFCHUNK];
+                int bread = i.read(by);
+                if (bread == -1) break;
+                if (bread == 0) continue;
+                ByteBuffer newb = ByteBuffer.allocate(b.capacity() + bread);
+                b.rewind();
+                newb.put(b);
+                newb.put(by, 0, bread);
+                b = newb;
+            }
+            return b;
+        }
+
+
         /**
          * Get authorization token, if token expected prepare HTTPBADREUQUEST response if token not found
          *
@@ -376,11 +434,16 @@ public class RestHelper {
         private Optional<IQueryInterface> verifyURL(HttpExchange t, RestParams pars) throws IOException {
 
             final Map<String, RestParams.RestParam> params = pars.getParams();
-            QueryInterface v = new QueryInterface(pars, t);
+            ByteBuffer b = null;
+            if (pars.isRequestDataExpected()) b = getRequestData(t);
+            QueryInterface v = new QueryInterface(pars, t, b);
 
             RestLogger.debug(t.getRequestMethod() + " " + t.getRequestURI().getQuery());
             if (!verifyMethod(v)) return Optional.empty();
-            if (tokenexpected && !getAuthorizationToken(v, tokenexpected).isPresent()) Optional.empty();
+            if (tokenexpected && !getAuthorizationToken(v, tokenexpected).isPresent()) return Optional.empty();
+            if (pars.isRequestDataExpected() && b.capacity() == 0)
+                return returnBad(v, "Request data expected but not found any");
+
             // verify param
             // check if parameters allowed
             if (t.getRequestURI().getQuery() != null) {
@@ -388,11 +451,15 @@ public class RestHelper {
                 String query = URLDecoder.decode(qq, StandardCharsets.UTF_8.toString());
                 String[] q = query.split("&");
                 for (String qline : q) {
-                    String[] vv = qline.split("=");
-                    String s = vv[0];
-                    String val = vv.length == 1 ? "" : vv[1];
+                    int ipos = qline.indexOf('=');
+                    String val = "";
+                    String s = qline;
+                    if (ipos != -1) {
+                        s = qline.substring(0, ipos);
+                        val = qline.substring(ipos + 1);
+                    }
                     if (!params.containsKey(s)) {
-                        returnBad(v, "Parameter " + s + " not expected.");
+                        return returnBad(v, "Parameter " + s + " not expected.");
                     }
                     // get value
                     RestParams.RestParam rpara = params.get(s);
@@ -404,7 +471,7 @@ public class RestHelper {
                             }
                             // incorrect true or false
                             String errmess = "Parameter " + s + " ? " + val + " true or false expected";
-                            returnBad(v, errmess);
+                            return returnBad(v, errmess);
                         }
                         case INT: {
                             try {
@@ -412,7 +479,7 @@ public class RestHelper {
                                 v.values.put(s, new ParamValue(i));
                                 break;
                             } catch (NumberFormatException e) {
-                                returnBad(v, "Parameter " + s + "?" + val + " incorrect integer value");
+                                return returnBad(v, "Parameter " + s + "?" + val + " incorrect integer value");
                             }
                         }
                         case STRING: {
