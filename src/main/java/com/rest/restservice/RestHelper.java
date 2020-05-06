@@ -14,9 +14,7 @@ package com.rest.restservice;
  */
 
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.*;
 
 import java.io.*;
 import java.lang.management.OperatingSystemMXBean;
@@ -47,6 +45,12 @@ public class RestHelper {
 
     public static final String TOKEN = "Token";
     private static final String AUTHORIZATION = "Authorization";
+
+    private static Authenticator auth = null;
+
+    public static void setAuth(Authenticator auth) {
+        RestHelper.auth = auth;
+    }
 
     /**
      * public values, used HTTP code responses
@@ -172,7 +176,7 @@ public class RestHelper {
 
 
         /**
-         * Abstract method enforced by com.sun.net.httpserver.HttpHandler abstract class.
+         * Abstract method enforced by com.sun.net.httpserver.HttpHandler abstract class.https://stackoverflow.blog/2020/04/29/more-than-qa-how-the-stack-overflow-team-uses-stack-overflow-for-teams/?cb=1
          *
          * @param httpExchange HttpExchange
          * @throws IOException
@@ -581,7 +585,9 @@ public class RestHelper {
      */
     public static void registerService(HttpServer server, RestServiceHelper service) {
         RestLogger.info("Register service: " + service.url);
-        server.createContext("/" + service.url, service);
+        HttpContext hc = server.createContext("/" + service.url, service);
+        if (auth != null) hc.setAuthenticator(auth);
+
     }
 
 }
