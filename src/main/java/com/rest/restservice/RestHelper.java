@@ -443,6 +443,12 @@ public class RestHelper {
             QueryInterface v = new QueryInterface(pars, t, b);
 
             RestLogger.debug(t.getRequestMethod() + " " + t.getRequestURI().getQuery());
+            if (OPTIONS.equals(t.getRequestMethod())) {
+                RestLogger.L.info(OPTIONS + " request");
+                produceOKResponse(v, Optional.of("OK"));
+                // return false, to avoid sending the content for OPTIONS
+                return Optional.empty();
+            }
             if (!verifyMethod(v)) return Optional.empty();
             if (tokenexpected && !getAuthorizationToken(v, tokenexpected).isPresent()) return Optional.empty();
             if (pars.isRequestDataExpected() && b.capacity() == 0)
@@ -505,12 +511,6 @@ public class RestHelper {
                 }
             }
 
-            if (OPTIONS.equals(t.getRequestMethod())) {
-                RestLogger.L.info(OPTIONS + " request");
-                produceOKResponse(v, Optional.of("OK"));
-                // return false, to avoid sending the content for OPTIONS
-                return Optional.empty();
-            }
             return Optional.of(v);
         }
 
