@@ -411,7 +411,9 @@ public class RestHelper {
         protected Optional<String> getAuthorizationToken(IQueryInterface v, boolean expected) throws IOException {
             Optional<String> token = getAuthorizationToken(v);
             if ((!token.isPresent() || token.get().equals("")) && expected) {
-                produceResponse(v, Optional.of("Authorization token is expected."), HTTPBADREQUEST);
+                String errmess = "Authorization token is expected.";
+                RestLogger.info(errmess);
+                produceResponse(v, Optional.of(errmess), HTTPBADREQUEST);
                 return Optional.empty();
             }
             return token;
