@@ -23,5 +23,8 @@ It adds RestService jar as a Maven dependency in the local repository.
 </dependency>
 
 ```
+# Practical example
+
+https://github.com/stanislawbartkowski/MockRestService
 
 
