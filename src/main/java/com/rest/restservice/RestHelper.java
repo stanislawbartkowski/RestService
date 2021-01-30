@@ -319,9 +319,10 @@ public class RestHelper {
          * @throws IOException
          */
         protected void produceParameterNotFound(IQueryInterface v, String s) throws IOException {
-            produceResponse(v, Optional.of("Parameter " + s + " not found in url"), HTTPBADREQUEST);
+            String errmess = "Parameter " + s + " not found in url";
+            RestLogger.L.severe(errmess);
+            produceResponse(v, Optional.of(errmess), HTTPBADREQUEST);
         }
-
 
         /**
          * Overloaded produceResponse, HTTPOK response code is included
@@ -506,7 +507,7 @@ public class RestHelper {
                 if (!v.values.containsKey(s)) {
                     if (params.get(s).obligatory) {
                         produceParameterNotFound(v, s);
-                        return returnBad(v, s);
+                        return Optional.empty();
                     }
                     // set default value
                     v.values.put(s, params.get(s).defa);
