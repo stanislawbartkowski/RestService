@@ -506,7 +506,7 @@ public class RestHelper {
                 if (!v.values.containsKey(s)) {
                     if (params.get(s).obligatory) {
                         produceParameterNotFound(v, s);
-                        return Optional.empty();
+                        return returnBad(v, s);
                     }
                     // set default value
                     v.values.put(s, params.get(s).defa);
