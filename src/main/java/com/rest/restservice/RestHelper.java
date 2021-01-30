@@ -17,13 +17,13 @@ package com.rest.restservice;
 import com.sun.net.httpserver.*;
 
 import java.io.*;
-import java.lang.management.OperatingSystemMXBean;
 import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.logging.Level;
+import java.sql.Date;
 
 /**
  * Main helper module. Contains supporting logic for handling REST services. The custom service class should extend RestServiceHelper class and implement two abstract methods.<br>
@@ -486,17 +486,22 @@ public class RestHelper {
                             String errmess = "Parameter " + s + " ? " + val + " true or false expected";
                             return returnBad(v, errmess);
                         }
-                        case INT: {
+                        case DOUBLE: {
                             try {
-                                int i = Integer.parseInt(val);
-                                v.values.put(s, new ParamValue(i));
+                                double dd = Double.parseDouble(val);
+                                v.values.put(s, new ParamValue(dd));
                                 break;
                             } catch (NumberFormatException e) {
-                                return returnBad(v, "Parameter " + s + "?" + val + " incorrect integer value");
+                                return returnBad(v, "Parameter " + s + "?" + val + " incorrect double value");
                             }
                         }
                         case STRING: {
                             v.values.put(s, new ParamValue(val));
+                            break;
+                        }
+                        case DATE: {
+                            Date da = Date.valueOf(val);
+                            v.values.put(s, new ParamValue(da));
                             break;
                         }
                     }
@@ -529,14 +534,14 @@ public class RestHelper {
         }
 
         /**
-         * Returns integer value for query parameters.
+         * Returns double value for query parameters.
          *
          * @param v     Context
          * @param param Query param name/key
-         * @return integer value
+         * @return double value
          */
-        protected int getIntParam(IQueryInterface v, String param) {
-            return v.getValues().get(param).intvalue;
+        protected double getDoubleParam(IQueryInterface v, String param) {
+            return v.getValues().get(param).getDoublevalue();
         }
 
         /**
@@ -549,6 +554,18 @@ public class RestHelper {
         protected String getStringParam(IQueryInterface v, String param) {
             return v.getValues().get(param).stringvalue;
         }
+
+        /**
+         * Returns date value for query parameters.
+         *
+         * @param v     Context
+         * @param param Query param name/key
+         * @return Date value
+         */
+        protected Date getDateParam(IQueryInterface v, String param) {
+            return v.getValues().get(param).getDatevalue();
+        }
+
 
         /**
          * Gets string query value. Produces HTTPBADREQUEST response if parameter is not specified

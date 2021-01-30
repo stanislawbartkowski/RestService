@@ -14,6 +14,8 @@ package com.rest.restservice;
  */
 
 
+import java.sql.Date;
+
 /**
  * Parameter values picked up from the query string. It is the responsibility of the application to request the propoer value.
  * The constructors reflects PARAMTYPE enum and specifies expected parameter value type.
@@ -22,8 +24,9 @@ package com.rest.restservice;
 public class ParamValue {
 
     final boolean logvalue;
-    final int intvalue;
+    final double doublevalue;
     final String stringvalue;
+    final Date datevalue;
 
     /** The parameter was BOOLEAN */
     public boolean isLogTrue() {
@@ -31,8 +34,12 @@ public class ParamValue {
     }
 
     /** The parameter was integer number, INT */
-    public int getIntvalue() {
-        return intvalue;
+    public double getDoublevalue() {
+        return doublevalue;
+    }
+
+    public Date getDatevalue() {
+        return datevalue;
     }
 
     /** The parameter was string (ny other) value, STRING */
@@ -40,31 +47,35 @@ public class ParamValue {
         return stringvalue;
     }
 
-    /** Default contructor (generic requirement) */
-    ParamValue() {
-        this.logvalue = false;
-        this.intvalue = -1;
-        this.stringvalue = null;
+    ParamValue(boolean logvalue, double doublevalue, String stringvalue, Date datevalue) {
+        this.logvalue = logvalue;
+        this.doublevalue = doublevalue;
+        this.stringvalue = stringvalue;
+        this.datevalue = datevalue;
     }
 
-    /** BOOLEAN parameter */
+    ParamValue() {
+        this(false,-1,null,null);
+    }
+
+
+        /** BOOLEAN parameter */
     public ParamValue(boolean logvalue) {
-        this.logvalue = logvalue;
-        this.intvalue = -1;
-        this.stringvalue = null;
+        this(logvalue,-1,null,null);
     }
 
     /** INT parameter */
-    public ParamValue(int intvalue) {
-        this.intvalue = intvalue;
-        this.logvalue = false;
-        this.stringvalue = null;
+    public ParamValue(double dublevalue) {
+        this(false,dublevalue,null,null);
+
     }
 
     /** STRING parameter */
     public ParamValue(String stringvalue) {
-        this.intvalue = -1;
-        this.logvalue = false;
-        this.stringvalue = stringvalue;
+        this(false,-1,stringvalue,null);
+    }
+
+    public ParamValue(Date datevalue) {
+        this(false,-1,null,datevalue);
     }
 }
