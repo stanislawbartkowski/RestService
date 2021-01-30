@@ -21,6 +21,8 @@ import java.net.HttpURLConnection;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.logging.Level;
 import java.sql.Date;
@@ -500,8 +502,13 @@ public class RestHelper {
                             break;
                         }
                         case DATE: {
-                            Date da = Date.valueOf(val);
-                            v.values.put(s, new ParamValue(da));
+                            SimpleDateFormat sqldateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                            try {
+                                Date da = new Date(sqldateFormat.parse(val).getTime());
+                                v.values.put(s, new ParamValue(da));
+                            } catch (ParseException p) {
+                                return returnBad(v, "Parameter " + s + "?" + val + " incorrect date format, expected yyyy-MM-dd");
+                            }
                             break;
                         }
                     }
