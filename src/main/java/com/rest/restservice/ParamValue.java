@@ -48,14 +48,14 @@ public class ParamValue {
     }
 
     /** BOOLEAN parameter */
-    ParamValue(boolean logvalue) {
+    public ParamValue(boolean logvalue) {
         this.logvalue = logvalue;
         this.intvalue = -1;
         this.stringvalue = null;
     }
 
     /** INT parameter */
-    ParamValue(int intvalue) {
+    public ParamValue(int intvalue) {
         this.intvalue = intvalue;
         this.logvalue = false;
         this.stringvalue = null;
