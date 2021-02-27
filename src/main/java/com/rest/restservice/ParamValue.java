@@ -1,7 +1,7 @@
 package com.rest.restservice;
 
 /*
- * Copyright 2020 stanislawbartkowski@gmail.com
+ * Copyright 2021 stanislawbartkowski@gmail.com
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,13 +27,18 @@ public class ParamValue {
     final double doublevalue;
     final String stringvalue;
     final Date datevalue;
+    final int intvalue;
 
-    /** The parameter was BOOLEAN */
+    /**
+     * The parameter was BOOLEAN
+     */
     public boolean isLogTrue() {
         return logvalue;
     }
 
-    /** The parameter was integer number, INT */
+    /**
+     * The parameter was integer number, INT
+     */
     public double getDoublevalue() {
         return doublevalue;
     }
@@ -42,40 +47,58 @@ public class ParamValue {
         return datevalue;
     }
 
-    /** The parameter was string (ny other) value, STRING */
+    /**
+     * The parameter was string (ny other) value, STRING
+     */
     public String getStringvalue() {
         return stringvalue;
     }
 
-    ParamValue(boolean logvalue, double doublevalue, String stringvalue, Date datevalue) {
+    public int getIntvalue() {
+        return intvalue;
+    }
+
+    ParamValue(boolean logvalue, double doublevalue, String stringvalue, Date datevalue, int intvalue) {
         this.logvalue = logvalue;
         this.doublevalue = doublevalue;
         this.stringvalue = stringvalue;
         this.datevalue = datevalue;
+        this.intvalue = intvalue;
     }
 
     ParamValue() {
-        this(false,-1,null,null);
+        this(false, -1, null, null, -1);
     }
 
 
-        /** BOOLEAN parameter */
+    /**
+     * BOOLEAN parameter
+     */
     public ParamValue(boolean logvalue) {
-        this(logvalue,-1,null,null);
+        this(logvalue, -1, null, null, -1);
     }
 
-    /** INT parameter */
+    /**
+     * DOUBLE parameter
+     */
     public ParamValue(double dublevalue) {
-        this(false,dublevalue,null,null);
+        this(false, dublevalue, null, null, -1);
 
     }
 
-    /** STRING parameter */
+    /**
+     * STRING parameter
+     */
     public ParamValue(String stringvalue) {
-        this(false,-1,stringvalue,null);
+        this(false, -1, stringvalue, null, -1);
     }
 
     public ParamValue(Date datevalue) {
-        this(false,-1,null,datevalue);
+        this(false, -1, null, datevalue, -1);
     }
+
+    public ParamValue(int intvalue) {
+        this(false, -1, null, null, intvalue);
+    }
+
 }

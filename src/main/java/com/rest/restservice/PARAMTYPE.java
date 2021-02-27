@@ -1,7 +1,7 @@
 package com.rest.restservice;
 
 /*
- * Copyright 2020 stanislawbartkowski@gmail.com
+ * Copyright 2021 stanislawbartkowski@gmail.com
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,5 +22,5 @@ package com.rest.restservice;
 
 
 public enum PARAMTYPE {
-    BOOLEAN, DOUBLE, STRING,DATE
+    BOOLEAN, DOUBLE, STRING,DATE, INT
 }

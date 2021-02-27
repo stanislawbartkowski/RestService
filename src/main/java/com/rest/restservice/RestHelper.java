@@ -1,7 +1,7 @@
 package com.rest.restservice;
 
 /*
- * Copyright 2020 stanislawbartkowski@gmail.com
+ * Copyright 2021 stanislawbartkowski@gmail.com
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -510,6 +510,16 @@ public class RestHelper {
                                 return returnBad(v, "Parameter " + s + "?" + val + " incorrect date format, expected yyyy-MM-dd");
                             }
                             break;
+                        }
+                        case INT: {
+                            try {
+                                int ii = Integer.parseInt(val);
+                                v.values.put(s, new ParamValue(ii));
+                                break;
+                            } catch (NumberFormatException e) {
+                                return returnBad(v, "Parameter " + s + "?" + val + " incorrect int value");
+                            }
+
                         }
                     }
                 } // for
