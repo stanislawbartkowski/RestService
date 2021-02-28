@@ -16,7 +16,7 @@ It adds RestService jar as a Maven dependency in the local repository.
 ```XML
 <dependency>
      <groupId>com.restservice</groupId>
-    <artifactId>RestService</artifactId>
+    <artifactId>restservice</artifactId>
      <version>1.0</version>
      <scope>jar</scope>
 </dependency>
