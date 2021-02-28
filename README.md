@@ -26,7 +26,7 @@ It adds RestService jar as a Maven dependency in the local repository.
 # Resolve dependency using GitHub Maven
 
 > pom.xml
-```
+```XML
   <repositories>
         <repository>
             <id>github</id>
