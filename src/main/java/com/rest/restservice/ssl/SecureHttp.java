@@ -34,16 +34,16 @@ import java.util.logging.Level;
 
 public class SecureHttp {
 
-    private static SSLContext load(String keystoreFilename, String keypassword, String storepassword, String alias) throws CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableKeyException, KeyStoreException, KeyManagementException {
+    private static SSLContext load(String keystoreFilename, String password) throws CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableKeyException, KeyStoreException, KeyManagementException {
         // load certificate
-        char[] storepass = storepassword.toCharArray();
-        char[] keypass = keypassword.toCharArray();
+        char[] storepass = password.toCharArray();
+        char[] keypass = password.toCharArray();
         FileInputStream fIn = new FileInputStream(keystoreFilename);
         KeyStore keystore = KeyStore.getInstance("JKS");
         keystore.load(fIn, storepass);
 // display certificate
-        Certificate cert = keystore.getCertificate(alias);
-        RestLogger.info(cert.toString());
+//        Certificate cert = keystore.getCertificate(alias);
+//        RestLogger.info(cert.toString());
 // setup the key manager factory
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
         kmf.init(keystore, keypass);
@@ -60,7 +60,7 @@ public class SecureHttp {
 // create ssl context
         SSLContext sslContext = null;
         try {
-            sslContext = load(params[0], params[1], params[2], params[3]);
+            sslContext = load(params[0], params[1]);
         } catch (CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException | KeyStoreException | KeyManagementException e) {
             String mess = "Cannot initialize SSL context";
             RestLogger.L.log(Level.SEVERE, mess, e);

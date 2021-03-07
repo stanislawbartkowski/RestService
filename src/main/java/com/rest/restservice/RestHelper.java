@@ -621,7 +621,7 @@ public class RestHelper {
      * @param service Service class
      */
     public static void registerService(HttpServer server, RestServiceHelper service) {
-        RestLogger.info("Register service: " + service.url);
+        RestLogger.info("Register service: " + (service.url.equals("") ? "{root}" : service.url));
         HttpContext hc = server.createContext("/" + service.url, service);
         if (auth != null) hc.setAuthenticator(auth);
 

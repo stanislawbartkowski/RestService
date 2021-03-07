@@ -59,7 +59,8 @@ abstract public class RestStart {
         if (System.getProperty("java.security.auth.login.config") != null)
             RestHelper.setAuth(HttpNegotiateServer.constructNegotiateAuthenticator());
 
-        RestLogger.info("Start HTTP Server, listening on port " + PORT);
+        RestLogger.info("Start " + (params.length > 0 ? "HTTPS" : "HTTP") + " Server, listening on port " + PORT);
+        if (params.length > 0) RestLogger.info("Secure connection");
         registerServices.accept(server);
 
         server.setExecutor(null); // creates a default executor

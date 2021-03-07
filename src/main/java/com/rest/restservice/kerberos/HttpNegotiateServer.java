@@ -22,7 +22,9 @@ import org.ietf.jgss.GSSContext;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSManager;
 import org.ietf.jgss.Oid;
-import sun.security.jgss.GSSUtil;
+//import sun.security.jgss.GSSUtil;
+import com.sun.security.jgss.GSSUtil;
+
 
 import java.net.HttpURLConnection;
 import java.security.PrivilegedExceptionAction;
@@ -66,11 +68,17 @@ public class HttpNegotiateServer {
                     m = GSSManager.getInstance();
                     Oid spnegoOid = new Oid("1.2.840.113554.1.2.2");
 
+                    Oid GSS_KRB5_MECH_OID = new Oid("1.2.840.113554.1.2.2");
+
+//                    Oid GSS_KRB5_MECH_OID = GSSUtil.GSS_KRB5_MECH_OID
+
+
                     cred = m.createCredential(null,
                             GSSCredential.DEFAULT_LIFETIME,
-                            GSSUtil.GSS_SPNEGO_MECH_OID,
+//                            GSSUtil.GSS_SPNEGO_MECH_OID,
+                            spnegoOid,
                             GSSCredential.ACCEPT_ONLY);
-                    cred.add(cred.getName(), GSSCredential.INDEFINITE_LIFETIME, GSSCredential.INDEFINITE_LIFETIME, GSSUtil.GSS_KRB5_MECH_OID, GSSCredential.ACCEPT_ONLY);
+                    cred.add(cred.getName(), GSSCredential.INDEFINITE_LIFETIME, GSSCredential.INDEFINITE_LIFETIME, GSS_KRB5_MECH_OID, GSSCredential.ACCEPT_ONLY);
 
                     return cred;
                 }

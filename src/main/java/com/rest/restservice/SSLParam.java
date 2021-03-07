@@ -25,7 +25,6 @@ public class SSLParam {
 
     private static final String STOREKEY = "store.key.filename";
     private static final String STOREPASSWORD = "key.store.password";
-    private static final String ALIAS = "alias";
 
     private static String getParam(Properties prop, String key) throws IOException {
         String res = prop.getProperty(key);
@@ -49,9 +48,7 @@ public class SSLParam {
             prop.load(input);
             return new String[]{
                     getParam(prop, STOREKEY),
-                    getParam(prop, STOREPASSWORD),
-                    getParam(prop, STOREPASSWORD),
-                    getParam(prop, ALIAS)
+                    getParam(prop, STOREPASSWORD)
             };
         }
     }
