@@ -20,10 +20,7 @@ import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLParameters;
+import javax.net.ssl.*;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -42,21 +39,26 @@ public class SecureHttp {
         KeyStore keystore = KeyStore.getInstance("JKS");
         keystore.load(fIn, storepass);
 // display certificate
+//        String alias = "alias";
 //        Certificate cert = keystore.getCertificate(alias);
 //        RestLogger.info(cert.toString());
 // setup the key manager factory
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
         kmf.init(keystore, keypass);
-        SSLContext sslContext = SSLContext.getInstance("TLSv1");
-        sslContext.init(kmf.getKeyManagers(), null, null);
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        // 2021/03/10
+        // Important: keep TLS and below: Otherwise, it wil hang after first call
+        // SSLParameters defaultSSLParameters = c.getDefaultSSLParameters();
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+        tmf.init(keystore);
+        sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
         // SSLContext.getDefault();
         return sslContext;
     }
 
-    public static HttpServer produceHttps(int PORT, String[] params) throws IOException {
-        HttpsServer server = HttpsServer.create();
+    public static HttpsServer produceHttps(int PORT, String[] params) throws IOException {
         // create https server
-        server = HttpsServer.create(new InetSocketAddress(PORT), 0);
+        HttpsServer server = HttpsServer.create(new InetSocketAddress(PORT), 0);
 // create ssl context
         SSLContext sslContext = null;
         try {
@@ -70,14 +72,20 @@ public class SecureHttp {
         server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
             public void configure(HttpsParameters params) {
                 // initialise the SSL context
-                SSLContext c = getSSLContext();
+  //              SSLContext c = getSSLContext();
+                SSLContext c = null;
+                try {
+                    c = SSLContext.getDefault();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                }
                 SSLEngine engine = c.createSSLEngine();
                 params.setNeedClientAuth(false);
                 params.setCipherSuites(engine.getEnabledCipherSuites());
                 params.setProtocols(engine.getEnabledProtocols());
                 // get the default parameters
-//                SSLParameters defaultSSLParameters = c.getDefaultSSLParameters();
-                SSLParameters defaultSSLParameters = c.getSupportedSSLParameters();
+                SSLParameters defaultSSLParameters = c.getDefaultSSLParameters();
+//                SSLParameters defaultSSLParameters = c.getSupportedSSLParameters();
                 params.setSSLParameters(defaultSSLParameters);
             }
         });

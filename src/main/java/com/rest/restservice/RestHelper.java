@@ -220,6 +220,7 @@ public class RestHelper {
                     }
                 }, Optional.of(e.getMessage()), HTTPBADREQUEST);
             }
+            httpExchange.close();
         }
 
         /**
