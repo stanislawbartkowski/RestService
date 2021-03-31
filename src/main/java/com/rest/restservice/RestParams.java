@@ -122,9 +122,11 @@ public class RestParams {
      * JSON : Content-Type  application/json
      * TEXT: Content-Type text/plain
      * ZIP : Content-Type application/zip
+     * JS: Content-Type text/javascript
+     * XML: Content-Type application/xml
      */
     public enum CONTENT {
-        TEXT, JSON, ZIP
+        TEXT, JSON, ZIP, JS, XML
     }
 
     /**

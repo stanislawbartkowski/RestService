@@ -258,6 +258,12 @@ public class RestHelper {
                     case ZIP:
                         t.getResponseHeaders().set("Content-Type", "application/zip");
                         break;
+                    case JS:
+                        t.getResponseHeaders().set("Content-Type", "text/javascript");
+                        break;
+                    case XML:
+                        t.getResponseHeaders().set("Content-Type", "application/xml");
+                        break;
                 }
             }
             t.getResponseHeaders().set("charset", "utf8");
