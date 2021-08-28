@@ -240,12 +240,13 @@ public class RestHelper {
             StringBuilder bui = new StringBuilder(OPTIONS);
             for (String m : pars.getMethodsAllowed()) bui.append(", " + m);
             t.getResponseHeaders().set("Access-Control-Allow-Methods", bui.toString());
+            t.getResponseHeaders().set("Allow:", bui.toString());
+            String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization";
+            t.getResponseHeaders().set("Access-Control-Allow-Headers", headersAllowed);
+            if (pars.getHeadersAllowed().isPresent())
+                headersAllowed = headersAllowed + "," + pars.getHeadersAllowed().get();
             if (pars.isCrossedAllowed()) {
                 t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-                String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization";
-                if (pars.getHeadersAllowed().isPresent())
-                    headersAllowed = headersAllowed + "," + pars.getHeadersAllowed().get();
-                t.getResponseHeaders().set("Access-Control-Allow-Headers", headersAllowed);
             }
             if (pars.getResponseContent().isPresent()) {
                 switch (pars.getResponseContent().get()) {
