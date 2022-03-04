@@ -267,7 +267,7 @@ public class RestHelper {
                         break;
                 }
             }
-            t.getResponseHeaders().set("charset", "utf8");
+            t.getResponseHeaders().set("charset", "utf-8");
         }
 
         private void addTokenHeader(IQueryInterface v, String token) {
@@ -291,6 +291,7 @@ public class RestHelper {
             else {
                 t.sendResponseHeaders(HTTPResponse, response.get().length);
                 try (OutputStream os = t.getResponseBody()) {
+                    // ret= URLDecoder.decode(ret, "UTF-8");
                     os.write(response.get());
                 }
             }
@@ -309,8 +310,12 @@ public class RestHelper {
          */
 
         protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
-            Optional<byte[]> resp = message.isPresent() ? Optional.of(message.get().getBytes()) : Optional.empty();
-            produceByteResponse(v, resp, HTTPResponse, token);
+            if (message.isPresent()) {
+                String ret = URLDecoder.decode(message.get(),"UTF-8");
+                Optional<byte[]> resp = Optional.of(ret.getBytes());
+                produceByteResponse(v, resp, HTTPResponse, token);
+            }
+            else produceByteResponse(v, Optional.empty(), HTTPResponse, token);
         }
 
 
