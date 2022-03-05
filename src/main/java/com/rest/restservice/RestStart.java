@@ -1,7 +1,7 @@
 package com.rest.restservice;
 
 /*
- * Copyright 2021 stanislawbartkowski@gmail.com
+ * Copyright 2022 stanislawbartkowski@gmail.com
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,6 +32,8 @@ import java.util.logging.Level;
  */
 abstract public class RestStart {
 
+    public static final String VERSTRING = "RestService 1.0, 2022/03/05";
+
     private static HttpServer produce(int PORT, String[] params) throws IOException {
         return params.length == 0 ? HttpServer.create(new InetSocketAddress(PORT), 0) :
                 SecureHttp.produceHttps(PORT,params);
@@ -59,6 +61,7 @@ abstract public class RestStart {
         if (System.getProperty("java.security.auth.login.config") != null)
             RestHelper.setAuth(HttpNegotiateServer.constructNegotiateAuthenticator());
 
+        RestLogger.info(VERSTRING);
         RestLogger.info("Start " + (params.length > 0 ? "HTTPS" : "HTTP") + " Server, listening on port " + PORT);
         if (params.length > 0) RestLogger.info("Secure connection");
         registerServices.accept(server);
