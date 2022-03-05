@@ -596,6 +596,18 @@ public class RestHelper {
             return v.getValues().get(param).getDatevalue();
         }
 
+        /**
+         * Returns int value for query parameters.
+         *
+         * @param v     Context
+         * @param param Query param name/key
+         * @return int value
+         */
+        protected int getIntParam(IQueryInterface v, String param) {
+            return v.getValues().get(param).getIntvalue();
+        }
+
+
 
         /**
          * Gets string query value. Produces HTTPBADREQUEST response if parameter is not specified
