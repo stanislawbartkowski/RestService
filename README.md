@@ -12,6 +12,11 @@ https://hoteljavaopensource.blogspot.com/2020/02/simple-restservice-library.html
 
 It adds RestService jar as a Maven dependency in the local repository.
 
+Deploy to Maven github<br>
+
+> mvn deploy<br>
+
+
 # Maven dependency
 ```XML
 <dependency>
