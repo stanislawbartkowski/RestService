@@ -17,22 +17,16 @@ import com.rest.restservice.kerberos.HttpNegotiateServer;
 import com.rest.restservice.ssl.SecureHttp;
 import com.sun.net.httpserver.*;
 
-import javax.net.ssl.*;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.*;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 
 /**
  * Main helper class starting HTTP server. Utilizes standard com.sun.net.httpserver.HttpServer server.
  */
 abstract public class RestStart {
 
-    public static final String VERSTRING = "RestService 1.0, 2022/03/05";
+    public static final String VERSTRING = "RestService 1.0, 2022/03/17";
 
     private static HttpServer produce(int PORT, String[] params) throws IOException {
         return params.length == 0 ? HttpServer.create(new InetSocketAddress(PORT), 0) :

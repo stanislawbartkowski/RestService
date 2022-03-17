@@ -311,8 +311,8 @@ public class RestHelper {
 
         protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
             if (message.isPresent()) {
-                String ret = URLDecoder.decode(message.get(),"UTF-8");
-                Optional<byte[]> resp = Optional.of(ret.getBytes());
+                //String ret = URLDecoder.decode(message.get(),"UTF-8");
+                Optional<byte[]> resp = Optional.of(message.get().getBytes());
                 produceByteResponse(v, resp, HTTPResponse, token);
             }
             else produceByteResponse(v, Optional.empty(), HTTPResponse, token);
