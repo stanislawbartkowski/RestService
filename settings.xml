@@ -28,11 +28,4 @@
     </profile>
   </profiles>
 
-  <servers>
-    <server>
-      <id>github</id>
-      <username>stanislawbartkowski</username>
-      <password>3eb81fc07add93eecefae5fe759d5c5762b6e932</password>
-    </server>
-  </servers>
 </settings>

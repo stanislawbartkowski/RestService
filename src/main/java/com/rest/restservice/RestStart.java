@@ -19,6 +19,7 @@ import com.sun.net.httpserver.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 /**
@@ -26,17 +27,18 @@ import java.util.function.Consumer;
  */
 abstract public class RestStart {
 
-    public static final String VERSTRING = "RestService 1.0, 2022/03/17";
+    public static final String VERSTRING = "RestService 1.1, 2022/04/06";
 
     private static HttpServer produce(int PORT, String[] params) throws IOException {
         return params.length == 0 ? HttpServer.create(new InetSocketAddress(PORT), 0) :
-                SecureHttp.produceHttps(PORT,params);
+                SecureHttp.produceHttps(PORT, params);
     }
 
     /**
      * Starts HTTP server
      *
      * @param PORT             TCP/IP port the server is listening
+     * @param single           Simgle or multithred execution
      * @param registerServices Consumer class to register REST services.
      * @param params           Parameters for secure connection,
      *                         if zero parameter : non-secure connection HTTP
@@ -49,8 +51,8 @@ abstract public class RestStart {
      */
 
 
-    static protected void RestStart(int PORT, Consumer<HttpServer> registerServices, String[] params) throws Exception {
-        HttpServer server = produce(PORT,params);
+    static protected void RestStart(int PORT, boolean single, Consumer<HttpServer> registerServices, String[] params) throws Exception {
+        HttpServer server = produce(PORT, params);
 
         if (System.getProperty("java.security.auth.login.config") != null)
             RestHelper.setAuth(HttpNegotiateServer.constructNegotiateAuthenticator());
@@ -60,7 +62,7 @@ abstract public class RestStart {
         if (params.length > 0) RestLogger.info("Secure connection");
         registerServices.accept(server);
 
-        server.setExecutor(null); // creates a default executor
+        server.setExecutor(single ? null : Executors.newCachedThreadPool()); // creates a default executor or multithreading executor
         server.start();
     }
 }
