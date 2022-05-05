@@ -124,9 +124,10 @@ public class RestParams {
      * ZIP : Content-Type application/zip
      * JS: Content-Type text/javascript
      * XML: Content-Type application/xml
+     * MIXED: Content-Type multipart/mixed; boundary=
      */
     public enum CONTENT {
-        TEXT, JSON, ZIP, JS, XML
+        TEXT, JSON, ZIP, JS, XML,MIXED
     }
 
     /**

@@ -48,6 +48,8 @@ public class RestHelper {
     public static final String TOKEN = "Token";
     private static final String AUTHORIZATION = "Authorization";
 
+    private static final String BOUNDARY = "---------------------------974767299852498929531610575";
+
     private static Authenticator auth = null;
 
     public static void setAuth(Authenticator auth) {
@@ -265,6 +267,10 @@ public class RestHelper {
                     case XML:
                         t.getResponseHeaders().set("Content-Type", "application/xml");
                         break;
+                    case MIXED:
+                        t.getResponseHeaders().set("Content-Type", "multipart/mixed;boundary="+BOUNDARY);
+                        break;
+
                 }
             }
             t.getResponseHeaders().set("charset", "utf-8");
@@ -318,6 +324,16 @@ public class RestHelper {
             else produceByteResponse(v, Optional.empty(), HTTPResponse, token);
         }
 
+        private String producePartResponse(String contenttype,Optional<String> m) {
+            String header = BOUNDARY + System.lineSeparator() + "Content-Type:" + contenttype + System.lineSeparator();
+            return m.isPresent() ? header + m.get() + System.lineSeparator() : header;
+        }
+
+        protected void produce2PartResponse(IQueryInterface v, Optional<String> message1, Optional<String> message2, int HTTPResponse, Optional<String> token) throws IOException {
+            String response = producePartResponse("application/json",message1) + producePartResponse("text/plain",message2);
+            Optional<byte[]> resp = Optional.of(response.getBytes());
+            produceByteResponse(v, resp, HTTPResponse, token);
+        }
 
         /**
          * Overloaded produceResponse, empty security token
