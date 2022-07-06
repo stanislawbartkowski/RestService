@@ -390,7 +390,8 @@ public class RestHelper {
             RestParams pars = v.getRestParams();
             if (OPTIONS.equals(t.getRequestMethod()) || pars.getRequestMethod().equals(t.getRequestMethod()))
                 return true;
-            String message = pars.getRequestMethod() + " method expected, " + t.getRequestMethod() + " provided.";
+            String message = String.format("%s method expected, %s is used.",pars.getRequestMethod(),t.getRequestMethod());
+            RestLogger.L.severe(message);
             produceResponse(v, Optional.of(message), HTTPMETHODNOTALLOWED);
             return false;
         }
