@@ -246,7 +246,7 @@ public class RestHelper {
             String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization";
             if (pars.getHeadersAllowed().isPresent())
                 headersAllowed = headersAllowed + "," + pars.getHeadersAllowed().get();
-            RestLogger.L.info("Headers allowed: " + headersAllowed);
+            // RestLogger.L.info("Headers allowed: " + headersAllowed);
             t.getResponseHeaders().set("Access-Control-Allow-Headers", headersAllowed);
             if (pars.isCrossedAllowed()) {
                 t.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
