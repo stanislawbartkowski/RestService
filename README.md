@@ -14,7 +14,7 @@ It adds RestService jar as a Maven dependency in the local repository.
 
 Deploy to Maven github<br>
 
-> mvn deploy -Dmaven.test.skip=true<br>
+> mvn deploy -Dmaven.test.skip=true -Dmaven.resolver.transport=wagon<br>
 
 
 # Maven dependency
