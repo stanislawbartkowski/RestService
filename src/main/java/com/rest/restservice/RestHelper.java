@@ -243,7 +243,7 @@ public class RestHelper {
             for (String m : pars.getMethodsAllowed()) bui.append(", " + m);
             t.getResponseHeaders().set("Access-Control-Allow-Methods", bui.toString());
             t.getResponseHeaders().set("Allow:", bui.toString());
-            String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization, sessionid";
+            String headersAllowed = "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization";
             if (pars.getHeadersAllowed().isPresent())
                 headersAllowed = headersAllowed + "," + pars.getHeadersAllowed().get();
             RestLogger.L.info("Headers allowed: " + headersAllowed);
