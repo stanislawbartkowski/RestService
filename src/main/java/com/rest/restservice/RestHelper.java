@@ -45,9 +45,6 @@ public class RestHelper {
     public static final String DELETE = "DELETE";
     public static final String OPTIONS = "OPTIONS";
 
-    public static final String TOKEN = "Token";
-    private static final String AUTHORIZATION = "Authorization";
-
     private static final String BOUNDARY = "---------------------------974767299852498929531610575";
 
     private static Authenticator auth = null;
@@ -155,7 +152,6 @@ public class RestHelper {
      */
     abstract public static class RestServiceHelper implements HttpHandler {
         private final String url;
-        private final boolean tokenexpected;
 
         /**
          * Abstract method to be implemented. Is called only once after the REST query was received and is valid during current call.
@@ -229,11 +225,9 @@ public class RestHelper {
          * Constructor
          *
          * @param url           The REST service URL, Important : without leading / (look registerService method)
-         * @param tokenexpected If security token is expected for this call
          */
-        protected RestServiceHelper(String url, boolean tokenexpected) {
+        protected RestServiceHelper(String url) {
             this.url = url;
-            this.tokenexpected = tokenexpected;
         }
 
         private void addCORSHeader(IQueryInterface v) {
@@ -271,14 +265,9 @@ public class RestHelper {
                     case MIXED:
                         t.getResponseHeaders().set("Content-Type", "multipart/mixed;boundary="+BOUNDARY);
                         break;
-
                 }
             }
             t.getResponseHeaders().set("charset", "utf-8");
-        }
-
-        private void addTokenHeader(IQueryInterface v, String token) {
-            v.getT().getResponseHeaders().set(AUTHORIZATION, TOKEN + " " + token);
         }
 
         /**
@@ -292,7 +281,6 @@ public class RestHelper {
          */
         protected void produceByteResponse(IQueryInterface v, Optional<byte[]> response, int HTTPResponse, Optional<String> token) throws IOException {
             addCORSHeader(v);
-            if (token.isPresent()) addTokenHeader(v, token.get());
             HttpExchange t = v.getT();
             if ((!response.isPresent()) || response.get().length == 0) t.sendResponseHeaders(HTTPNODATA, 0);
             else {
@@ -397,22 +385,6 @@ public class RestHelper {
             return false;
         }
 
-        /**
-         * Helper method, extract authorizarion token if expected
-         *
-         * @param v Context
-         * @return Empty if authorization token not found in the HTTP header
-         */
-        protected Optional<String> getAuthorizationToken(IQueryInterface v) {
-            HttpExchange t = v.getT();
-            List<String> auth = t.getRequestHeaders().get(AUTHORIZATION);
-            if (auth == null || auth.isEmpty()) return Optional.empty();
-            for (String s : auth) {
-                String[] e = s.split(" ");
-                if (e.length > 1 && e[0].equals(TOKEN)) return Optional.of(e[1]);
-            }
-            return Optional.empty();
-        }
 
         private final static int BUFCHUNK = 10;
 
@@ -431,26 +403,6 @@ public class RestHelper {
                 b = newb;
             }
             return b;
-        }
-
-
-        /**
-         * Get authorization token, if token expected prepare HTTPBADREUQUEST response if token not found
-         *
-         * @param v        Context
-         * @param expected if true and token not found produce HTTPBADREQUEST response
-         * @return if Optional.empty do not proceed, HTTPBADREQUEST response already sent
-         * @throws IOException
-         */
-        protected Optional<String> getAuthorizationToken(IQueryInterface v, boolean expected) throws IOException {
-            Optional<String> token = getAuthorizationToken(v);
-            if ((!token.isPresent() || token.get().equals("")) && expected) {
-                String errmess = "Authorization token is expected.";
-                RestLogger.info(errmess);
-                produceResponse(v, Optional.of(errmess), HTTPBADREQUEST);
-                return Optional.empty();
-            }
-            return token;
         }
 
         /**
@@ -486,7 +438,6 @@ public class RestHelper {
                 return Optional.empty();
             }
             if (!verifyMethod(v)) return Optional.empty();
-            if (tokenexpected && !getAuthorizationToken(v, tokenexpected).isPresent()) return Optional.empty();
             if (pars.isRequestDataExpected() && b.capacity() == 0)
                 return returnBad(v, "Request data expected but not found any");
 
