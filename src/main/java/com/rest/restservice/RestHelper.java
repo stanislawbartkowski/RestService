@@ -224,7 +224,7 @@ public class RestHelper {
         /**
          * Constructor
          *
-         * @param url           The REST service URL, Important : without leading / (look registerService method)
+         * @param url The REST service URL, Important : without leading / (look registerService method)
          */
         protected RestServiceHelper(String url) {
             this.url = url;
@@ -263,7 +263,7 @@ public class RestHelper {
                         t.getResponseHeaders().set("Content-Type", "application/xml");
                         break;
                     case MIXED:
-                        t.getResponseHeaders().set("Content-Type", "multipart/mixed;boundary="+BOUNDARY);
+                        t.getResponseHeaders().set("Content-Type", "multipart/mixed;boundary=" + BOUNDARY);
                         break;
                 }
             }
@@ -309,18 +309,35 @@ public class RestHelper {
                 //String ret = URLDecoder.decode(message.get(),"UTF-8");
                 Optional<byte[]> resp = Optional.of(message.get().getBytes());
                 produceByteResponse(v, resp, HTTPResponse, token);
-            }
-            else produceByteResponse(v, Optional.empty(), HTTPResponse, token);
+            } else produceByteResponse(v, Optional.empty(), HTTPResponse, token);
         }
 
-        private String producePartResponse(String contenttype,Optional<String> m) {
+
+        private byte[] concatenateBytes(byte a[], byte b[]) throws IOException {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            outputStream.write(a);
+            outputStream.write(b);
+            return outputStream.toByteArray();
+        }
+
+        private byte[] producePartResponse(String contenttype, Optional<String> m, Optional<byte[]> b) throws IOException {
             String header = BOUNDARY + System.lineSeparator() + "Content-Type:" + contenttype + System.lineSeparator();
-            return m.isPresent() ? header + m.get() + System.lineSeparator() : header;
+            if (m.isPresent()) concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator()).getBytes());
+            if (b.isPresent()) concatenateBytes(header.getBytes(), b.get());
+            return header.getBytes();
         }
 
         protected void produce2PartResponse(IQueryInterface v, Optional<String> message1, Optional<String> message2, int HTTPResponse, Optional<String> token) throws IOException {
-            String response = producePartResponse("application/json",message1) + producePartResponse("text/plain",message2);
-            Optional<byte[]> resp = Optional.of(response.getBytes());
+            byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty()),
+                    producePartResponse("text/plain", message2, Optional.empty()));
+            Optional<byte[]> resp = Optional.of(response);
+            produceByteResponse(v, resp, HTTPResponse, token);
+        }
+
+        protected void produce2PartByteResponse(IQueryInterface v, Optional<String> message1, Optional<byte[]> message2, int HTTPResponse, Optional<String> token) throws IOException {
+            byte[] response = concatenateBytes(producePartResponse("application/json", message1,Optional.empty()),
+                    producePartResponse("application/octet-stream", Optional.empty(), message2));
+            Optional<byte[]> resp = Optional.of(response);
             produceByteResponse(v, resp, HTTPResponse, token);
         }
 
@@ -379,7 +396,7 @@ public class RestHelper {
             RestParams pars = v.getRestParams();
             if (OPTIONS.equals(t.getRequestMethod()) || pars.getRequestMethod().equals(t.getRequestMethod()))
                 return true;
-            String message = String.format("%s method expected, %s is used.",pars.getRequestMethod(),t.getRequestMethod());
+            String message = String.format("%s method expected, %s is used.", pars.getRequestMethod(), t.getRequestMethod());
             RestLogger.L.severe(message);
             produceResponse(v, Optional.of(message), HTTPMETHODNOTALLOWED);
             return false;
@@ -575,7 +592,6 @@ public class RestHelper {
         protected int getIntParam(IQueryInterface v, String param) {
             return v.getValues().get(param).getIntvalue();
         }
-
 
 
         /**

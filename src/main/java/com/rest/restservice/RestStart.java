@@ -1,7 +1,7 @@
 package com.rest.restservice;
 
 /*
- * Copyright 2022 stanislawbartkowski@gmail.com
+ * Copyright 2023 stanislawbartkowski@gmail.com
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  */
 abstract public class RestStart {
 
-    public static final String VERSTRING = "RestService 1.2 (r:4), 2023/04/22";
+    public static final String VERSTRING = "RestService 1.2 (r:5), 2023/05/18";
 
     private static HttpServer produce(int PORT, String[] params) throws IOException {
         return params.length == 0 ? HttpServer.create(new InetSocketAddress(PORT), 0) :
