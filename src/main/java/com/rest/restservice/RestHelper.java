@@ -322,8 +322,8 @@ public class RestHelper {
 
         private byte[] producePartResponse(String contenttype, Optional<String> m, Optional<byte[]> b) throws IOException {
             String header = BOUNDARY + System.lineSeparator() + "Content-Type:" + contenttype + System.lineSeparator();
-            if (m.isPresent()) concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator()).getBytes());
-            if (b.isPresent()) concatenateBytes(header.getBytes(), b.get());
+            if (m.isPresent()) return concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator()).getBytes());
+            if (b.isPresent()) return concatenateBytes(header.getBytes(), b.get());
             return header.getBytes();
         }
 
