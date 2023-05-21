@@ -403,7 +403,7 @@ public class RestHelper {
         }
 
 
-        private final static int BUFCHUNK = 10;
+        private final static int BUFCHUNK = 10000;
 
         private ByteBuffer getRequestData(HttpExchange t) throws IOException {
             InputStream i = t.getRequestBody();
