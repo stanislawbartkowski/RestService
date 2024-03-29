@@ -1,7 +1,7 @@
 package com.rest.restservice;
 
 /*
- * Copyright 2021 stanislawbartkowski@gmail.com
+ * Copyright 2024 stanislawbartkowski@gmail.com
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -270,6 +270,39 @@ public class RestHelper {
             t.getResponseHeaders().set("charset", "utf-8");
         }
 
+        private final static int READERCHUNK = 10;
+
+        private void produceResponseFromInput(IQueryInterface v, Optional<InputStream> in, int HTTPResponse, Optional<String> token) throws IOException {
+            addCORSHeader(v);
+            HttpExchange t = v.getT();
+            if (in.isEmpty()) {
+                t.sendResponseHeaders(HTTPNODATA, 0);
+                return;
+            }
+            byte[] buffer = new byte[READERCHUNK];
+            int bytesread = 0;
+            int bytessum = 0;
+            // chunked transfer
+            t.sendResponseHeaders(HTTPResponse, 0);
+            try (OutputStream os = t.getResponseBody()) {
+                while ((bytesread = in.get().read(buffer, 0, READERCHUNK)) != -1) {
+                    bytessum += bytesread;
+                    os.write(buffer,0, bytesread);
+                }
+            }
+            if (bytessum == 0) {
+                t.sendResponseHeaders(HTTPNODATA, 0);
+            }
+        }
+
+        protected void produceResponseFromFile(IQueryInterface v, File in, boolean removefile, int HTTPResponse, Optional<String> token) throws IOException {
+            try (FileInputStream fin = new FileInputStream(in)) {
+                produceResponseFromInput(v, Optional.of(fin), HTTPResponse, token);
+            }
+            if (removefile) in.delete();
+        }
+
+
         /**
          * General helper method to use by custom servicehandle method
          *
@@ -280,15 +313,10 @@ public class RestHelper {
          * @throws IOException
          */
         protected void produceByteResponse(IQueryInterface v, Optional<byte[]> response, int HTTPResponse, Optional<String> token) throws IOException {
-            addCORSHeader(v);
-            HttpExchange t = v.getT();
-            if ((!response.isPresent()) || response.get().length == 0) t.sendResponseHeaders(HTTPNODATA, 0);
+            if (response.isEmpty()) produceResponseFromInput(v, Optional.empty(), HTTPResponse, token);
             else {
-                t.sendResponseHeaders(HTTPResponse, response.get().length);
-                try (OutputStream os = t.getResponseBody()) {
-                    // ret= URLDecoder.decode(ret, "UTF-8");
-                    os.write(response.get());
-                }
+                InputStream is = new ByteArrayInputStream(response.get());
+                produceResponseFromInput(v, Optional.of(is), HTTPResponse, token);
             }
         }
 
@@ -306,7 +334,6 @@ public class RestHelper {
 
         protected void produceResponse(IQueryInterface v, Optional<String> message, int HTTPResponse, Optional<String> token) throws IOException {
             if (message.isPresent()) {
-                //String ret = URLDecoder.decode(message.get(),"UTF-8");
                 Optional<byte[]> resp = Optional.of(message.get().getBytes());
                 produceByteResponse(v, resp, HTTPResponse, token);
             } else produceByteResponse(v, Optional.empty(), HTTPResponse, token);
@@ -322,7 +349,8 @@ public class RestHelper {
 
         private byte[] producePartResponse(String contenttype, Optional<String> m, Optional<byte[]> b) throws IOException {
             String header = BOUNDARY + System.lineSeparator() + "Content-Type:" + contenttype + System.lineSeparator();
-            if (m.isPresent()) return concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator()).getBytes());
+            if (m.isPresent())
+                return concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator()).getBytes());
             if (b.isPresent()) return concatenateBytes(header.getBytes(), b.get());
             return header.getBytes();
         }
@@ -335,7 +363,7 @@ public class RestHelper {
         }
 
         protected void produce2PartByteResponse(IQueryInterface v, Optional<String> message1, Optional<byte[]> message2, int HTTPResponse, Optional<String> token) throws IOException {
-            byte[] response = concatenateBytes(producePartResponse("application/json", message1,Optional.empty()),
+            byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty()),
                     producePartResponse("application/octet-stream", Optional.empty(), message2));
             Optional<byte[]> resp = Optional.of(response);
             produceByteResponse(v, resp, HTTPResponse, token);
@@ -403,7 +431,7 @@ public class RestHelper {
         }
 
 
-        private final static int BUFCHUNK = 10;
+        private final static int BUFCHUNK = 1000;
 
         private ByteBuffer getRequestData(HttpExchange t) throws IOException {
             InputStream i = t.getRequestBody();

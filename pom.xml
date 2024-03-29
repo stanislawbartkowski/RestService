@@ -24,6 +24,7 @@
 
     </build>
 
+    <!--
     <distributionManagement>
         <repository>
             <id>github</id>
@@ -31,5 +32,6 @@
             <url>https://maven.pkg.github.com/stanislawbartkowski/RestService</url>
         </repository>
     </distributionManagement>
+    -->
 
 </project>
