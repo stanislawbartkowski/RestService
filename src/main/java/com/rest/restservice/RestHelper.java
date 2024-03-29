@@ -270,7 +270,7 @@ public class RestHelper {
             t.getResponseHeaders().set("charset", "utf-8");
         }
 
-        private final static int READERCHUNK = 10;
+        private final static int READERCHUNK = 1000;
 
         private void produceResponseFromInput(IQueryInterface v, Optional<InputStream> in, int HTTPResponse, Optional<String> token) throws IOException {
             addCORSHeader(v);
