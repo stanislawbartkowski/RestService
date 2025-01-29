@@ -357,7 +357,7 @@ public class RestHelper {
 
         protected void produce2PartResponse(IQueryInterface v, Optional<String> message1, Optional<String> message2, int HTTPResponse, Optional<String> token) throws IOException {
             byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty()),
-                    producePartResponse("text/plain", message2, Optional.empty()));
+                    producePartResponse("text/html", message2, Optional.empty()));
             Optional<byte[]> resp = Optional.of(response);
             produceByteResponse(v, resp, HTTPResponse, token);
         }
