@@ -45,7 +45,10 @@ public class RestHelper {
     public static final String DELETE = "DELETE";
     public static final String OPTIONS = "OPTIONS";
 
-    private static final String BOUNDARY = "---------------------------974767299852498929531610575";
+    private static final String BOUNDARY = "974767299852498929531610575";
+    private static final String BOUNDARYSEP = "--" + BOUNDARY;
+    private static final String BOUNDARYCLOSING = BOUNDARYSEP + "--";
+
 
     private static Authenticator auth = null;
 
@@ -347,24 +350,35 @@ public class RestHelper {
             return outputStream.toByteArray();
         }
 
-        private byte[] producePartResponse(String contenttype, Optional<String> m, Optional<byte[]> b) throws IOException {
-            String header = BOUNDARY + System.lineSeparator() + "Content-Type:" + contenttype + System.lineSeparator();
+        private byte[] concatenateBytes3(byte a[], byte b[], byte c[]) throws IOException {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            outputStream.write(a);
+            outputStream.write(b);
+            outputStream.write(c);
+            return outputStream.toByteArray();
+        }
+
+        private byte[] producePartResponse(String contenttype, Optional<String> m, Optional<byte[]> b, boolean addclose) throws IOException {
+            String header = BOUNDARYSEP + System.lineSeparator() + "Content-Type:" + contenttype + System.lineSeparator();
             if (m.isPresent())
-                return concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator()).getBytes());
-            if (b.isPresent()) return concatenateBytes(header.getBytes(), b.get());
+                return concatenateBytes(header.getBytes(), (m.get() + System.lineSeparator() + (addclose ? BOUNDARYCLOSING: "")).getBytes());
+            if (b.isPresent()) {
+                if (addclose) return concatenateBytes3(header.getBytes(), b.get(), BOUNDARYCLOSING.getBytes());
+                return concatenateBytes(header.getBytes(), b.get());
+            }
             return header.getBytes();
         }
 
         protected void produce2PartResponse(IQueryInterface v, Optional<String> message1, Optional<String> message2, int HTTPResponse, Optional<String> token) throws IOException {
-            byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty()),
-                    producePartResponse("text/html", message2, Optional.empty()));
+            byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty(), false),
+                    producePartResponse("text/html", message2, Optional.empty(), true));
             Optional<byte[]> resp = Optional.of(response);
             produceByteResponse(v, resp, HTTPResponse, token);
         }
 
         protected void produce2PartByteResponse(IQueryInterface v, Optional<String> message1, Optional<byte[]> message2, int HTTPResponse, Optional<String> token) throws IOException {
-            byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty()),
-                    producePartResponse("application/octet-stream", Optional.empty(), message2));
+            byte[] response = concatenateBytes(producePartResponse("application/json", message1, Optional.empty(), false),
+                    producePartResponse("application/octet-stream", Optional.empty(), message2, true));
             Optional<byte[]> resp = Optional.of(response);
             produceByteResponse(v, resp, HTTPResponse, token);
         }

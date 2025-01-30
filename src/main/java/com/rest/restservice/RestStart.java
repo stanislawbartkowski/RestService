@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  */
 abstract public class RestStart {
 
-    public static final String VERSTRING = "RestService 1.3 (r:1), 2025/01/29";
+    public static final String VERSTRING = "RestService 1.3 (r:2), 2025/01/30";
 
     private static HttpServer produce(int PORT, String[] params) throws IOException {
         return params.length == 0 ? HttpServer.create(new InetSocketAddress(PORT), 0) :
