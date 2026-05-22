@@ -38,7 +38,7 @@ abstract public class RestStart {
      * Starts HTTP server
      *
      * @param PORT             TCP/IP port the server is listening
-     * @param single           Simgle or multithred execution
+     * @param single           Single or multithread execution
      * @param registerServices Consumer class to register REST services.
      * @param params           Parameters for secure connection,
      *                         if zero parameter : non-secure connection HTTP
